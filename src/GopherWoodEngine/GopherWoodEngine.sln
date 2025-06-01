@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36127.28 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RunnethOverStudio.GopherWoodEngine.Runtime", "RunnethOverStudio.GopherWoodEngine.Runtime\RunnethOverStudio.GopherWoodEngine.Runtime.csproj", "{C378B441-D5B7-4763-B289-DE15CA834A8A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RunnethOverStudio.GopherWoodEngine.TestBed", "RunnethOverStudio.GopherWoodEngine.TestBed\RunnethOverStudio.GopherWoodEngine.TestBed.csproj", "{08DBAC51-DB15-4F6B-992E-96EE0915054F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C378B441-D5B7-4763-B289-DE15CA834A8A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C378B441-D5B7-4763-B289-DE15CA834A8A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C378B441-D5B7-4763-B289-DE15CA834A8A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C378B441-D5B7-4763-B289-DE15CA834A8A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{08DBAC51-DB15-4F6B-992E-96EE0915054F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08DBAC51-DB15-4F6B-992E-96EE0915054F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{08DBAC51-DB15-4F6B-992E-96EE0915054F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{08DBAC51-DB15-4F6B-992E-96EE0915054F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {95E28551-CE5F-4761-9F41-3A3B7EBB7DC0}
+	EndGlobalSection
+EndGlobal

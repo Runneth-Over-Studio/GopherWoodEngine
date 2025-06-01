@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	  <OutputType>Exe</OutputType>
+	  <TargetFramework>net8.0</TargetFramework>
+	  <ImplicitUsings>disable</ImplicitUsings>
+	  <Nullable>enable</Nullable>
+	  <PublishSingleFile>true</PublishSingleFile>
+	  <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RunnethOverStudio.GopherWoodEngine.Runtime\RunnethOverStudio.GopherWoodEngine.Runtime.csproj" />
+  </ItemGroup>
+
+</Project>
