@@ -1,4 +1,6 @@
-﻿using System;
+﻿using RunnethOverStudio.GopherWoodEngine.Runtime;
+using RunnethOverStudio.GopherWoodEngine.TestBed;
+using System;
 
 internal class Program
 {
@@ -8,7 +10,15 @@ internal class Program
 
         try
         {
-            //TODO:
+            EngineConfig engineConfig = new()
+            {
+                Title = "Gopher Wood Engine Test Bed",
+                Width = 1280,
+                Height = 720
+            };
+
+            using TestBedGame game = new(engineConfig);
+            game.Start();
         }
         catch (Exception ex)
         {
