@@ -1,3 +1,7 @@
+<p align="left">
+  <img src="content/icon/gopherwood-icon.png" width="175" alt="GopherWood Logo">
+</p>
+
 # Gopher Wood Engine
 Runneth Over Studio's in-house game engine. Written in C#.
 
