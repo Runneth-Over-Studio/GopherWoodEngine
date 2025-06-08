@@ -12,10 +12,17 @@ internal static class EngineBuilder
     {
         IServiceCollection services = new ServiceCollection();
 
+        // Core Systems
         services.AddDebugLogging();
 
-        services
-            .AddSingleton<IGraphicsDevice>(sp => ActivatorUtilities.CreateInstance<VulkanGraphicsDevice>(sp, engineConfig));
+        // Gameplay Foundations
+        services.AddSingleton<IEventSystem, EventSystem>();
+
+        // Low-Level Renderer
+        services.AddSingleton<IGraphicsDevice>(sp => ActivatorUtilities.CreateInstance<VulkanGraphicsDevice>(sp, engineConfig));
+
+        // Human Interface Device
+        services.AddSingleton<IPhysicalDeviceIO, PhysicalDeviceIO>();
 
         return services.BuildServiceProvider();
     }

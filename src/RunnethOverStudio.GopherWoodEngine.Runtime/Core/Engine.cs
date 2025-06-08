@@ -9,6 +9,7 @@ public class Engine : IDisposable
 {
     private readonly IServiceProvider _services;
     private readonly IGraphicsDevice _graphicsDevice;
+    private readonly IPhysicalDeviceIO _physicalDeviceIO;
     private readonly ILogger<Engine> _logger;
     private readonly Game _game;
     private bool _isRunning = true;
@@ -19,13 +20,15 @@ public class Engine : IDisposable
     {
         _services = EngineBuilder.Build(game.EngineConfig);
         _graphicsDevice = _services.GetRequiredService<IGraphicsDevice>();
+        _physicalDeviceIO = _services.GetRequiredService<IPhysicalDeviceIO>();
         _logger = _services.GetRequiredService<ILogger<Engine>>();
         _game = game;
 
-        _graphicsDevice.Update += OnUpdate;
-        _graphicsDevice.Render += OnRender;
-        _graphicsDevice.Resize += OnResize;
-        _graphicsDevice.Closing += OnWindowClosing;
+        IEventSystem eventSystem = _services.GetRequiredService<IEventSystem>();
+        eventSystem.Subscribe<WindowUpdateEventArgs>(OnUpdate);
+        eventSystem.Subscribe<WindowRenderEventArgs>(OnRender);
+        eventSystem.Subscribe<WindowResizeEventArgs>(OnResize);
+        eventSystem.Subscribe<WindowCloseEventArgs>(OnWindowClosing);
 
         _logger.LogDebug("Engine initialized.");
     }
@@ -36,28 +39,28 @@ public class Engine : IDisposable
         _graphicsDevice.InitiateWindowMessageLoop();
     }
 
-    private void OnUpdate(double deltaTime)
+    private void OnUpdate(object? sender, WindowUpdateEventArgs e)
     {
         if (_isRunning && !_isSuspended)
         {
-            _game.Update(deltaTime);
+            _game.Update(e.DeltaTime);
         }
     }
 
-    private void OnRender(double deltaTime)
+    private void OnRender(object? sender, WindowRenderEventArgs e)
     {
         if (_isRunning && !_isSuspended)
         {
-            _game.Render(deltaTime);
+            _game.Render(e.DeltaTime);
         }
     }
 
-    private void OnResize(int width, int height)
+    private void OnResize(object? sender, WindowResizeEventArgs e)
     {
-        _game.OnResize(width, height);
+        _game.OnResize(e.Width, e.Height);
     }
 
-    private void OnWindowClosing()
+    private void OnWindowClosing(object? sender, WindowCloseEventArgs e)
     {
         _logger.LogDebug("Window closing, stopping engine.");
         _isRunning = false;
@@ -75,12 +78,8 @@ public class Engine : IDisposable
         {
             if (disposing)
             {
-                _graphicsDevice.Closing -= OnWindowClosing;
-                _graphicsDevice.Resize -= OnResize;
-                _graphicsDevice.Render -= OnRender;
-                _graphicsDevice.Update -= OnUpdate;
-
                 _graphicsDevice.Dispose();
+                //TODO: Unsubscribe from all events in _physicalDeviceIO?
 
                 _logger.LogDebug("Engine disposed.");
             }

@@ -1,4 +1,5 @@
 ﻿using Silk.NET.Core;
+using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using Silk.NET.Windowing;
@@ -13,20 +14,12 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
     private const uint VK_VERSION_MAJOR = 1;
     private const uint VK_VERSION_MINOR = 1;
 
-    public event Action<int, int>? Resize;
-    public event Action<int, int>? FramebufferResize;
-    public event Action? Closing;
-    public event Action<bool>? FocusChanged;
-    public event Action? Load;
-    public event Action<double>? Update;
-    public event Action<double>? Render;
-
     private readonly IWindow _silkWindow;
     private readonly Vk _vk;
     private readonly Instance _instance;
     private bool _disposed = false;
 
-    public VulkanGraphicsDevice(EngineConfig engineConfig)
+    public VulkanGraphicsDevice(IEventSystem eventSystem, EngineConfig engineConfig)
     {
         WindowOptions options = WindowOptions.DefaultVulkan with
         {
@@ -40,13 +33,13 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
 
         _silkWindow = Window.Create(options);
 
-        _silkWindow.Load += () => Load?.Invoke();
-        _silkWindow.Update += (delta) => Update?.Invoke(delta);
-        _silkWindow.Render += (delta) => Render?.Invoke(delta);
-        _silkWindow.Resize += (size) => Resize?.Invoke(size.X, size.Y);
-        _silkWindow.FramebufferResize += (size) => FramebufferResize?.Invoke(size.X, size.Y);
-        _silkWindow.FocusChanged += (focused) => FocusChanged?.Invoke(focused);
-        _silkWindow.Closing += () => Closing?.Invoke();
+        _silkWindow.Load += () => eventSystem.Publish(this, new WindowLoadEventArgs());
+        _silkWindow.Update += (delta) => eventSystem.Publish(this, new WindowUpdateEventArgs(delta));
+        _silkWindow.Render += (delta) => eventSystem.Publish(this, new WindowRenderEventArgs(delta));
+        _silkWindow.Resize += (size) => eventSystem.Publish(this, new WindowResizeEventArgs(size.X, size.Y));
+        _silkWindow.FramebufferResize += (size) => eventSystem.Publish(this, new WindowFramebufferResizeEventArgs(size.X, size.Y));
+        _silkWindow.FocusChanged += (focused) => eventSystem.Publish(this, new WindowFocusChangedEventArgs(focused));
+        _silkWindow.Closing += () => eventSystem.Publish(this, new WindowCloseEventArgs());
 
         _silkWindow.Initialize();
 
@@ -57,8 +50,12 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
 
         _vk = Vk.GetApi();
         _instance = CreateInstance(engineConfig);
+    }
 
-        //IInputContext input = SilkWindow.CreateInput(); // After window has been initialized.
+    public IInputContext GetWindowInputContext()
+    {
+        // Window must have been already initialized.
+        return _silkWindow.CreateInput();
     }
 
     public void InitiateWindowMessageLoop() => _silkWindow.Run();
