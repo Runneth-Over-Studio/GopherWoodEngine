@@ -2,7 +2,7 @@ using System;
 
 namespace RunnethOverStudio.GopherWoodEngine.Runtime.Modules;
 
-public interface IEventSystem
+public interface IEventSystem : IDisposable
 {
     void Publish<T>(object? sender, T eventData) where T : EventArgs;
 

@@ -1,52 +1,87 @@
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace RunnethOverStudio.GopherWoodEngine.Runtime.Modules;
 
-internal class EventSystem : IEventSystem
+internal class EventSystem(ILogger<EventSystem> logger) : IEventSystem
 {
-    private readonly ConcurrentDictionary<Type, List<Delegate>> _handlers = new();
-    private readonly ConcurrentDictionary<Type, object> _locks = new();
+    private readonly ConcurrentDictionary<Type, ImmutableList<Delegate>> _handlers = new();
+    private readonly ILogger<EventSystem> _logger = logger;
+    private bool _disposed = false;
 
     public void Publish<T>(object? sender, T eventData) where T : EventArgs
     {
-        Type key = typeof(EventHandler<T>);
-
-        if (_handlers.TryGetValue(key, out List<Delegate>? handlers))
+        if (!_disposed)
         {
-            lock (_locks.GetOrAdd(key, _ => new object()))
+            Type key = typeof(EventHandler<T>);
+
+            if (_handlers.TryGetValue(key, out ImmutableList<Delegate>? handlers))
             {
+                // The use of the immutable collection allows for lock-free reads.
                 foreach (EventHandler<T> handler in handlers.Cast<EventHandler<T>>())
                 {
-                    handler(sender, eventData);
+                    try
+                    {
+                        handler(sender, eventData);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "An error occurred while invoking event handler for {EventType}.", key.Name);
+                    }
                 }
             }
+        }
+        else
+        {
+            throw new ObjectDisposedException(nameof(EventSystem));
         }
     }
 
     public void Subscribe<T>(EventHandler<T> handler) where T : EventArgs
     {
-        Type key = typeof(EventHandler<T>);
-        List<Delegate> list = _handlers.GetOrAdd(key, _ => []);
-
-        lock (_locks.GetOrAdd(key, _ => new object()))
+        if (!_disposed)
         {
-            list.Add(handler);
+            Type key = typeof(EventHandler<T>);
+            _handlers.AddOrUpdate(key, [handler], (k, list) => list.Contains(handler) ? list : list.Add(handler));
+        }
+        else
+        {
+            throw new ObjectDisposedException(nameof(EventSystem));
         }
     }
 
     public void Unsubscribe<T>(EventHandler<T> handler) where T : EventArgs
     {
-        Type key = typeof(EventHandler<T>);
-
-        if (_handlers.TryGetValue(key, out List<Delegate>? list))
+        if (!_disposed)
         {
-            lock (_locks.GetOrAdd(key, _ => new object()))
+            Type key = typeof(EventHandler<T>);
+            _handlers.AddOrUpdate(key, [], (k, list) => list.Remove(handler));
+        }
+        else
+        {
+            throw new ObjectDisposedException(nameof(EventSystem));
+        }
+    }
+
+    public void Dispose()
+    {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
             {
-                list.Remove(handler);
+                _handlers.Clear();
             }
+
+            _disposed = true;
         }
     }
 }

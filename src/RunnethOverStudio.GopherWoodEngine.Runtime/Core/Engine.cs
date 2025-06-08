@@ -8,6 +8,7 @@ namespace RunnethOverStudio.GopherWoodEngine.Runtime.Core;
 public class Engine : IDisposable
 {
     private readonly IServiceProvider _services;
+    private readonly IEventSystem _eventSystem;
     private readonly IGraphicsDevice _graphicsDevice;
     private readonly IPhysicalDeviceIO _physicalDeviceIO;
     private readonly ILogger<Engine> _logger;
@@ -19,6 +20,7 @@ public class Engine : IDisposable
     public Engine(Game game)
     {
         _services = EngineBuilder.Build(game.EngineConfig);
+        _eventSystem = _services.GetRequiredService<IEventSystem>();
         _graphicsDevice = _services.GetRequiredService<IGraphicsDevice>();
         _physicalDeviceIO = _services.GetRequiredService<IPhysicalDeviceIO>();
         _logger = _services.GetRequiredService<ILogger<Engine>>();
@@ -78,8 +80,8 @@ public class Engine : IDisposable
         {
             if (disposing)
             {
+                _eventSystem.Dispose();
                 _graphicsDevice.Dispose();
-                //TODO: Unsubscribe from all events in _physicalDeviceIO?
 
                 _logger.LogDebug("Engine disposed.");
             }
