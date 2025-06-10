@@ -4,7 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Linq;
 
-namespace RunnethOverStudio.GopherWoodEngine.Runtime.Modules;
+namespace GopherWoodEngine.Runtime.Modules;
 
 internal class EventSystem(ILogger<EventSystem> logger) : IEventSystem
 {

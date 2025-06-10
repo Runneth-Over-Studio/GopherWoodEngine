@@ -7,7 +7,7 @@ using System;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-namespace RunnethOverStudio.GopherWoodEngine.Runtime.Modules;
+namespace GopherWoodEngine.Runtime.Modules;
 
 internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
 {

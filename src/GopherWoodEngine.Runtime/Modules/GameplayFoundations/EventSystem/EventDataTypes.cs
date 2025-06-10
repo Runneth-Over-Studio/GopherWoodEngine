@@ -1,7 +1,7 @@
 using Silk.NET.Input;
 using System;
 
-namespace RunnethOverStudio.GopherWoodEngine.Runtime.Modules;
+namespace GopherWoodEngine.Runtime.Modules;
 
 #region Window Event Args
 public class WindowLoadEventArgs : EventArgs

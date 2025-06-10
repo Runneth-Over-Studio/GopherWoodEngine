@@ -1,7 +1,7 @@
-﻿using RunnethOverStudio.GopherWoodEngine.Runtime.Core;
+﻿using GopherWoodEngine.Runtime.Core;
 using System;
 
-namespace RunnethOverStudio.GopherWoodEngine.Runtime;
+namespace GopherWoodEngine.Runtime;
 
 public abstract class Game : IDisposable
 {

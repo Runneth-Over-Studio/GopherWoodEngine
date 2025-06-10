@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace RunnethOverStudio.GopherWoodEngine.Runtime;
+namespace GopherWoodEngine.Runtime;
 
 public record EngineConfig
 {

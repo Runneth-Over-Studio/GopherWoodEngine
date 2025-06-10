@@ -1,7 +1,7 @@
 ﻿using System;
 using Silk.NET.Input;
 
-namespace RunnethOverStudio.GopherWoodEngine.Runtime.Modules;
+namespace GopherWoodEngine.Runtime.Modules;
 
 public interface IGraphicsDevice : IDisposable
 {

@@ -1,9 +1,9 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using GopherWoodEngine.Runtime.Modules;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using RunnethOverStudio.GopherWoodEngine.Runtime.Modules;
 using System;
 
-namespace RunnethOverStudio.GopherWoodEngine.Runtime.Core;
+namespace GopherWoodEngine.Runtime.Core;
 
 public class Engine : IDisposable
 {

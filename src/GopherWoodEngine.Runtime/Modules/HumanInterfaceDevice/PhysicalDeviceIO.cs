@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Silk.NET.Input;
 
-namespace RunnethOverStudio.GopherWoodEngine.Runtime.Modules;
+namespace GopherWoodEngine.Runtime.Modules;
 
 internal class PhysicalDeviceIO : IPhysicalDeviceIO
 {

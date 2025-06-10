@@ -1,5 +1,5 @@
-﻿using RunnethOverStudio.GopherWoodEngine.Runtime;
-using RunnethOverStudio.GopherWoodEngine.TestBed;
+﻿using GopherWoodEngine.Runtime;
+using GopherWoodEngine.TestBed;
 using System;
 
 internal class Program

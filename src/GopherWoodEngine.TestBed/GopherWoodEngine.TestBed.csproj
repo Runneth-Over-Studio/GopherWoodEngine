@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\RunnethOverStudio.GopherWoodEngine.Runtime\RunnethOverStudio.GopherWoodEngine.Runtime.csproj" />
+    <ProjectReference Include="..\GopherWoodEngine.Runtime\GopherWoodEngine.Runtime.csproj" />
   </ItemGroup>
 
 </Project>
