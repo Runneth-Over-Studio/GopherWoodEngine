@@ -7,7 +7,7 @@ namespace GopherWoodEngine.Runtime.Core;
 
 public class Engine : IDisposable
 {
-    public IEventSystem EventSystem { get; set; }
+    public IEventSystem EventSystem { get; }
 
     private readonly IServiceProvider _services;
     private readonly IGraphicsDevice _graphicsDevice;
