@@ -6,10 +6,10 @@ using System.Linq;
 
 namespace GopherWoodEngine.Runtime.Modules;
 
-internal class EventSystem(ILogger<EventSystem> logger) : IEventSystem
+internal class EventSystem(ILogger<IEventSystem> logger) : IEventSystem
 {
     private readonly ConcurrentDictionary<Type, ImmutableList<Delegate>> _handlers = new();
-    private readonly ILogger<EventSystem> _logger = logger;
+    private readonly ILogger<IEventSystem> _logger = logger;
     private bool _disposed = false;
 
     public void Publish<T>(object? sender, T eventData) where T : EventArgs

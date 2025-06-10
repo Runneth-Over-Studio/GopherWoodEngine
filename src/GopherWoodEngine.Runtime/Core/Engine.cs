@@ -7,8 +7,9 @@ namespace GopherWoodEngine.Runtime.Core;
 
 public class Engine : IDisposable
 {
+    public IEventSystem EventSystem { get; set; }
+
     private readonly IServiceProvider _services;
-    private readonly IEventSystem _eventSystem;
     private readonly IGraphicsDevice _graphicsDevice;
     private readonly IPhysicalDeviceIO _physicalDeviceIO;
     private readonly ILogger<Engine> _logger;
@@ -20,7 +21,7 @@ public class Engine : IDisposable
     public Engine(Game game)
     {
         _services = EngineBuilder.Build(game.EngineConfig);
-        _eventSystem = _services.GetRequiredService<IEventSystem>();
+        EventSystem = _services.GetRequiredService<IEventSystem>();
         _graphicsDevice = _services.GetRequiredService<IGraphicsDevice>();
         _physicalDeviceIO = _services.GetRequiredService<IPhysicalDeviceIO>();
         _logger = _services.GetRequiredService<ILogger<Engine>>();
@@ -80,7 +81,7 @@ public class Engine : IDisposable
         {
             if (disposing)
             {
-                _eventSystem.Dispose();
+                EventSystem.Dispose();
                 _graphicsDevice.Dispose();
 
                 _logger.LogDebug("Engine disposed.");
