@@ -1,12 +1,14 @@
 ﻿using GopherWoodEngine.Runtime;
-using GopherWoodEngine.TestBed;
 using System;
+
+namespace GopherWoodEngine.TestBed;
 
 internal class Program
 {
     private static void Main()
     {
         int exitCode = 0;
+        Console.Clear();
 
         try
         {
