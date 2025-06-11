@@ -18,7 +18,7 @@ namespace GopherWoodEngine.Runtime.Modules;
 internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
 {
     private const uint VK_VERSION_MAJOR = 1;
-    private const uint VK_VERSION_MINOR = 4;
+    private const uint VK_VERSION_MINOR = 3;
 
     private readonly ILogger<IGraphicsDevice> _logger;
     private readonly IWindow _silkWindow;
@@ -151,28 +151,13 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         {
             DebugUtilsMessengerCreateInfoEXT createInfo = new();
             PopulateDebugMessengerCreateInfo(ref createInfo);
-            string failMessage = "Vulkan debug messenger creation unsuccessful.";
 
-            try
+            if (_debugUtils!.CreateDebugUtilsMessenger(_instance, in createInfo, null, out DebugUtilsMessengerEXT debugUtilsMessenger) != Result.Success)
             {
-                if (_debugUtils!.CreateDebugUtilsMessenger(_instance, in createInfo, null, out DebugUtilsMessengerEXT debugUtilsMessenger) != Result.Success)
-                {
-                    throw new Exception(failMessage);
-                }
+                throw new Exception("Vulkan debug messenger creation unsuccessful.");
+            }
 
-                return debugUtilsMessenger;
-            }
-            catch (Exception ex)
-            {
-                if (ex.Message.Contains("Native symbol not found", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    _logger.LogError("{prefix} Verify Vulkan SDK {major}.{minor} is installed. Exception: {message}", failMessage, VK_VERSION_MAJOR, VK_VERSION_MINOR, ex.Message);
-                }
-                else
-                {
-                    _logger.LogError("{message}", failMessage);
-                }
-            }
+            return debugUtilsMessenger;
         }
 
         return null;
@@ -195,7 +180,7 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
 
             if (!validationLayerSupported)
             {
-                throw new Exception("Vulkan validation layers requested, but not available.");
+                throw new Exception($"Vulkan validation layers requested, but not available. Verify Vulkan SDK {VK_VERSION_MAJOR}.{VK_VERSION_MINOR}, or greater, is installed.");
             }
         }
     }

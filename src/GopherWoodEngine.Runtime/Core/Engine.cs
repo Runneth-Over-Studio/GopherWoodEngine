@@ -38,8 +38,11 @@ public class Engine : IDisposable
 
     public void Run()
     {
-        _logger.LogTrace("Initiating game loop.");
+        _logger.LogTrace("Initiating game loop...");
+
         _graphicsDevice.InitiateWindowMessageLoop();
+
+        _logger.LogTrace("Exited game loop.");
     }
 
     private void OnUpdate(object? sender, WindowUpdateEventArgs e)
