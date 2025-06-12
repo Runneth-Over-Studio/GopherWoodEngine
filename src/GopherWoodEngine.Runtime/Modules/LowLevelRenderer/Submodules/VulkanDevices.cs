@@ -1,5 +1,8 @@
-﻿using Silk.NET.Core.Native;
+﻿using Silk.NET.Core;
+using Silk.NET.Core.Native;
 using Silk.NET.Vulkan;
+using Silk.NET.Vulkan.Extensions.KHR;
+using Silk.NET.Windowing;
 using System;
 using System.Collections.Generic;
 using Device = Silk.NET.Vulkan.Device;
@@ -11,20 +14,40 @@ internal unsafe class VulkanDevices : IDisposable
     internal PhysicalDevice PhysicalDevice { get; }
     internal Device LogicalDevice { get; }
     internal Queue GraphicsQueue { get; }
+    internal KhrSurface KhrSurface { get; }
+    internal SurfaceKHR SurfaceKHR { get; }
 
     private readonly Vk _vk;
+    private readonly Instance _instance;
     private bool _disposed = false;
 
-    public VulkanDevices(Instance instance, Vk vk, bool enableValidationLayers)
+    public VulkanDevices(IWindow window, Instance instance, Vk vk, bool enableValidationLayers)
     {
         _vk = vk;
+        _instance = instance;
 
-        (uint queueFamilyIndex, PhysicalDevice physicalDevice) = PickPhysicalDevice(instance, vk);
+        (KhrSurface khrSurface, SurfaceKHR surfaceKHR) = CreateSurface(window, instance);
+        KhrSurface = khrSurface;
+        SurfaceKHR = surfaceKHR;
+
+        (uint queueFamilyIndex, PhysicalDevice physicalDevice) = PickPhysicalDevice(instance, vk, surfaceKHR, khrSurface);
         PhysicalDevice = physicalDevice;
         LogicalDevice = CreateLogicalDevice(queueFamilyIndex, vk, physicalDevice, enableValidationLayers);
     }
 
-    private static (uint queueFamilyIndex, PhysicalDevice physicalDevice) PickPhysicalDevice(Instance instance, Vk vk)
+    private (KhrSurface, SurfaceKHR) CreateSurface(IWindow window, Instance instance)
+    {
+        if (!_vk.TryGetInstanceExtension<KhrSurface>(instance, out KhrSurface khrSurface))
+        {
+            throw new NotSupportedException("KHR_surface extension not found.");
+        }
+
+        SurfaceKHR surfaceKHR = window.VkSurface!.Create<AllocationCallbacks>(instance.ToHandle(), null).ToSurface();
+
+        return (khrSurface, surfaceKHR);
+    }
+
+    private static (uint queueFamilyIndex, PhysicalDevice physicalDevice) PickPhysicalDevice(Instance instance, Vk vk, SurfaceKHR surfaceKHR, KhrSurface khrSurface)
     {
         uint? graphicsQueueFamilyIndex = null;
         PhysicalDevice? physicalDevice = null;
@@ -33,7 +56,7 @@ internal unsafe class VulkanDevices : IDisposable
 
         foreach (PhysicalDevice device in devices)
         {
-            graphicsQueueFamilyIndex = GraphicsQueueFamilyIndex(device, vk);
+            graphicsQueueFamilyIndex = GraphicsQueueFamilyIndex(device, vk, surfaceKHR, khrSurface);
             if (graphicsQueueFamilyIndex != null)
             {
                 physicalDevice = device;
@@ -93,8 +116,10 @@ internal unsafe class VulkanDevices : IDisposable
         return logicalDevice;
     }
 
-    private static uint? GraphicsQueueFamilyIndex(PhysicalDevice device, Vk vk)
+    private static uint? GraphicsQueueFamilyIndex(PhysicalDevice device, Vk vk, SurfaceKHR surfaceKHR, KhrSurface khrSurface)
     {
+        uint? queueFamilyIndex = null;
+
         uint queueFamilityCount = 0;
         vk.GetPhysicalDeviceQueueFamilyProperties(device, ref queueFamilityCount, null);
 
@@ -107,15 +132,27 @@ internal unsafe class VulkanDevices : IDisposable
         uint i = 0;
         foreach (QueueFamilyProperties queueFamily in queueFamilies)
         {
-            if (queueFamily.QueueFlags.HasFlag(QueueFlags.GraphicsBit))
+            bool graphicsSupport = queueFamily.QueueFlags.HasFlag(QueueFlags.GraphicsBit);
+            khrSurface.GetPhysicalDeviceSurfaceSupport(device, i, surfaceKHR, out Bool32 presentSupport);
+
+            //TODO: Not sure if this struct will ever be useful.
+            QueueFamilyIndex index = new QueueFamilyIndex()
             {
+                Index = i,
+                HasGraphicsFamily = graphicsSupport,
+                HasPresentFamily = presentSupport
+            };
+
+            if (index.IsComplete)
+            {
+                queueFamilyIndex = i;
                 break;
             }
 
             i++;
         }
 
-        return i;
+        return queueFamilyIndex;
     }
 
     public void Dispose()
@@ -131,9 +168,19 @@ internal unsafe class VulkanDevices : IDisposable
             if (disposing)
             {
                 _vk.DestroyDevice(LogicalDevice, null);
+                KhrSurface.DestroySurface(_instance, SurfaceKHR, null);
             }
 
             _disposed = true;
         }
     }
+}
+
+internal struct QueueFamilyIndex
+{
+    public uint Index { get; set; }
+    public bool HasGraphicsFamily { get; set; }
+    public bool HasPresentFamily { get; set; }
+
+    public readonly bool IsComplete => HasGraphicsFamily && HasPresentFamily;
 }

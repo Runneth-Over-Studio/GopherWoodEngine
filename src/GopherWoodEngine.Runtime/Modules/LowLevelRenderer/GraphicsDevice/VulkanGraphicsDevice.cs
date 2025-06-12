@@ -64,7 +64,7 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         _vk = Vk.GetApi();
         _instance = CreateInstance(engineConfig);
         _debugger = !_enableValidationLayers ? null : new VulkanDebugger(_instance, _vk, logger);
-        _devices = new VulkanDevices(_instance, _vk, _enableValidationLayers);
+        _devices = new VulkanDevices(_silkWindow, _instance, _vk, _enableValidationLayers);
     }
 
     public IInputContext GetWindowInputContext() => _silkWindow.CreateInput();
