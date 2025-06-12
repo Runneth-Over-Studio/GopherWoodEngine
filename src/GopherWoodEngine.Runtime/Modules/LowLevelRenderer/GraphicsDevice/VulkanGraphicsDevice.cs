@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using GopherWoodEngine.Runtime.Modules.LowLevelRenderer.Submodules;
+using Microsoft.Extensions.Logging;
 using Silk.NET.Core;
 using Silk.NET.Core.Native;
 using Silk.NET.Input;
@@ -7,7 +8,6 @@ using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.EXT;
 using Silk.NET.Windowing;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
@@ -24,10 +24,9 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
     private readonly IWindow _silkWindow;
     private readonly Vk _vk;
     private readonly Instance _instance;
-    private readonly string[] _validationLayers = [ "VK_LAYER_KHRONOS_validation" ];
+    private readonly VulkanDebugger? _debugger;
+    private readonly VulkanDevices _devices;
     private bool _enableValidationLayers = false;
-    private ExtDebugUtils? _debugUtils = null;
-    private DebugUtilsMessengerEXT? _debugMessenger = null;
     private bool _disposed = false;
 
     public VulkanGraphicsDevice(IEventSystem eventSystem, ILogger<IGraphicsDevice> logger, EngineConfig engineConfig)
@@ -64,7 +63,8 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         _logger = logger;
         _vk = Vk.GetApi();
         _instance = CreateInstance(engineConfig);
-        _debugMessenger = BuildDebugMessenger();
+        _debugger = !_enableValidationLayers ? null : new VulkanDebugger(_instance, _vk, logger);
+        _devices = new VulkanDevices(_instance, _vk, _enableValidationLayers);
     }
 
     public IInputContext GetWindowInputContext() => _silkWindow.CreateInput();
@@ -75,7 +75,7 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
 
     private Instance CreateInstance(EngineConfig engineConfig)
     {
-        CheckValidationLayerSupport();
+        VulkanDebugger.CheckValidationLayerSupport(_vk, $"{VK_VERSION_MAJOR}.{VK_VERSION_MINOR}");
 
         Instance? vulkanInstance = null;
         Version? engineVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version();
@@ -112,11 +112,12 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
 
             if (_enableValidationLayers)
             {
+                string[] validationLayers = VulkanDebugger.GetEnabledLayerNames();
                 DebugUtilsMessengerCreateInfoEXT debugCreateInfo = new();
-                PopulateDebugMessengerCreateInfo(ref debugCreateInfo);
+                VulkanDebugger.PopulateDebugMessengerCreateInfo(ref debugCreateInfo, _logger);
                 createInfo.PNext = &debugCreateInfo;
-                createInfo.EnabledLayerCount = (uint)_validationLayers.Length;
-                createInfo.PpEnabledLayerNames = (byte**)SilkMarshal.StringArrayToPtr(_validationLayers);
+                createInfo.EnabledLayerCount = (uint)validationLayers.Length;
+                createInfo.PpEnabledLayerNames = (byte**)SilkMarshal.StringArrayToPtr(validationLayers);
             }
 
             if (_vk.CreateInstance(in createInfo, null, out Instance instance) != Result.Success)
@@ -145,78 +146,6 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         return vulkanInstance.Value;
     }
 
-    private DebugUtilsMessengerEXT? BuildDebugMessenger()
-    {
-        if (_enableValidationLayers && _vk.TryGetInstanceExtension(_instance, out _debugUtils))
-        {
-            DebugUtilsMessengerCreateInfoEXT createInfo = new();
-            PopulateDebugMessengerCreateInfo(ref createInfo);
-
-            if (_debugUtils!.CreateDebugUtilsMessenger(_instance, in createInfo, null, out DebugUtilsMessengerEXT debugUtilsMessenger) != Result.Success)
-            {
-                throw new Exception("Vulkan debug messenger creation unsuccessful.");
-            }
-
-            return debugUtilsMessenger;
-        }
-
-        return null;
-    }
-
-    private void CheckValidationLayerSupport()
-    {
-        if (_enableValidationLayers)
-        {
-            uint layerCount = 0;
-            _vk.EnumerateInstanceLayerProperties(ref layerCount, null);
-            LayerProperties[] availableLayers = new LayerProperties[layerCount];
-            fixed (LayerProperties* availableLayersPtr = availableLayers)
-            {
-                _vk.EnumerateInstanceLayerProperties(ref layerCount, availableLayersPtr);
-            }
-
-            HashSet<string?> availableLayerNames = [.. availableLayers.Select(layer => Marshal.PtrToStringAnsi((IntPtr)layer.LayerName))];
-            bool validationLayerSupported = _validationLayers.All(availableLayerNames.Contains);
-
-            if (!validationLayerSupported)
-            {
-                throw new Exception($"Vulkan validation layers requested, but not available. Verify Vulkan SDK {VK_VERSION_MAJOR}.{VK_VERSION_MINOR}, or greater, is installed.");
-            }
-        }
-    }
-
-    private void PopulateDebugMessengerCreateInfo(ref DebugUtilsMessengerCreateInfoEXT createInfo)
-    {
-        createInfo.SType = StructureType.DebugUtilsMessengerCreateInfoExt;
-
-        createInfo.MessageSeverity = DebugUtilsMessageSeverityFlagsEXT.VerboseBitExt |
-                                     DebugUtilsMessageSeverityFlagsEXT.WarningBitExt |
-                                     DebugUtilsMessageSeverityFlagsEXT.ErrorBitExt;
-
-        createInfo.MessageType = DebugUtilsMessageTypeFlagsEXT.GeneralBitExt |
-                                 DebugUtilsMessageTypeFlagsEXT.PerformanceBitExt |
-                                 DebugUtilsMessageTypeFlagsEXT.ValidationBitExt;
-
-        createInfo.PfnUserCallback = new PfnDebugUtilsMessengerCallbackEXT(DebugCallback);
-    }
-
-    private uint DebugCallback(DebugUtilsMessageSeverityFlagsEXT messageSeverity, DebugUtilsMessageTypeFlagsEXT messageTypes, DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
-    {
-        LogLevel logLevel = messageSeverity switch
-        {
-            DebugUtilsMessageSeverityFlagsEXT.None => LogLevel.None,
-            DebugUtilsMessageSeverityFlagsEXT.VerboseBitExt => LogLevel.Trace,
-            DebugUtilsMessageSeverityFlagsEXT.InfoBitExt => LogLevel.Information,
-            DebugUtilsMessageSeverityFlagsEXT.WarningBitExt => LogLevel.Warning,
-            DebugUtilsMessageSeverityFlagsEXT.ErrorBitExt => LogLevel.Error,
-            _ => LogLevel.Debug,
-        };
-
-        _logger.Log(logLevel, "Vulkan: {message}", Marshal.PtrToStringAnsi((nint)pCallbackData->PMessage));
-
-        return Vk.False;
-    }
-
     public void Dispose()
     {
         Dispose(disposing: true);
@@ -229,11 +158,8 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         {
             if (disposing)
             {
-                if (_debugUtils != null && _debugMessenger != null)
-                {
-                    _debugUtils.DestroyDebugUtilsMessenger(_instance, _debugMessenger.Value, null);
-                }
-
+                _devices.Dispose();
+                _debugger?.Dispose();
                 _vk.DestroyInstance(_instance, null);
                 _vk.Dispose();
                 _silkWindow.Dispose();
