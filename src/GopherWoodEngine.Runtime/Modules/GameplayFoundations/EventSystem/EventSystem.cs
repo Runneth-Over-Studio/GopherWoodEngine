@@ -6,6 +6,7 @@ using System.Linq;
 
 namespace GopherWoodEngine.Runtime.Modules;
 
+// Note: If we ever start to see GC pressure or performance issues, we may want to consider a more involved solution, like Disruptor-net.
 internal class EventSystem(ILogger<IEventSystem> logger) : IEventSystem
 {
     private readonly ConcurrentDictionary<Type, ImmutableList<Delegate>> _handlers = new();
