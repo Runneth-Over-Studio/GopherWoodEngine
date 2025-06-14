@@ -74,7 +74,7 @@ internal unsafe class VulkanDevices : IDisposable
         }
 
         uint i = 0;
-        uint minTransferScore = 255; // Arbitrary score to prioritize transfer queues
+        uint minTransferScore = 255; // Arbitrary score to prioritize transfer queues.
         foreach (QueueFamilyProperties queueFamily in queueFamilies)
         {
             uint currentTransferScore = 0;
