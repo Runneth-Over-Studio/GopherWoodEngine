@@ -74,14 +74,30 @@ internal unsafe class VulkanDevices : IDisposable
         }
 
         uint i = 0;
+        uint minTransferScore = 255; // Arbitrary score to prioritize transfer queues
         foreach (QueueFamilyProperties queueFamily in queueFamilies)
         {
-            if (queueFamilyIndices.GraphicsIndex == null && queueFamily.QueueFlags.HasFlag(QueueFlags.GraphicsBit))
+            uint currentTransferScore = 0;
+
+            if (queueFamily.QueueFlags.HasFlag(QueueFlags.GraphicsBit))
             {
                 queueFamilyIndices.GraphicsIndex = i;
+                ++currentTransferScore;
             }
 
-            if (queueFamilyIndices.PresentIndex == null && surface.PresentIsSupported(physicalDevice, i))
+            if (queueFamily.QueueFlags.HasFlag(QueueFlags.ComputeBit))
+            {
+                queueFamilyIndices.ComputeIndex = i;
+                ++currentTransferScore;
+            }
+
+            if (queueFamily.QueueFlags.HasFlag(QueueFlags.TransferBit) && currentTransferScore <= minTransferScore)
+            {
+                minTransferScore = currentTransferScore; // Take the index if it is the current lowest. This increases the liklihood that it is a dedicated transfer queue.
+                queueFamilyIndices.TransferIndex = i;
+            }
+
+            if (surface.PresentIsSupported(physicalDevice, i))
             {
                 queueFamilyIndices.PresentIndex = i;
             }
@@ -242,6 +258,8 @@ internal struct QueueFamilyIndices
 {
     public uint? GraphicsIndex { get; set; }
     public uint? PresentIndex { get; set; }
+    public uint? ComputeIndex { get; set; }
+    public uint? TransferIndex { get; set; }
 
     public readonly bool IsComplete => GraphicsIndex != null && PresentIndex != null;
 }
