@@ -12,9 +12,26 @@ namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.Submodules;
 
 internal unsafe class VulkanDevices : IDisposable
 {
+    /// <summary>
+    /// Represents a physical device (GPU) that supports Vulkan as well as other defined features.
+    /// </summary>
     internal PhysicalDevice PhysicalDevice { get; }
+
+    /// <summary>
+    /// Used to interface with the physical device, allowing for resource management and command submission.
+    /// </summary>
     internal Device LogicalDevice { get; }
+
+    /// <summary>
+    /// Graphics processing queue used for executing GPU commands.
+    /// Command buffers on multiple threads can all be submited at once on the main thread with a single low-overhead call.
+    /// </summary>
     internal Queue GraphicsQueue { get; }
+
+    /// <summary>
+    /// Queue used to manage the presentation of items.
+    /// Command buffers on multiple threads can all be submited at once on the main thread with a single low-overhead call.
+    /// </summary>
     internal Queue PresentQueue { get; }
 
     private readonly Vk _vk;
@@ -24,7 +41,7 @@ internal unsafe class VulkanDevices : IDisposable
     {
         _vk = vk;
 
-        (PhysicalDevice physicalDevice, QueueFamilyIndices indices) = PickPhysicalDevice(instance, vk, surface);
+        (PhysicalDevice physicalDevice, QueueFamilyIndices indices) = SelectPhysicalDevice(instance, vk, surface);
         if (indices.GraphicsIndex == null || indices.PresentIndex == null)
         {
             throw new Exception("Queue family indices are not complete. Ensure the physical device supports graphics and presentation queues.");
@@ -39,6 +56,10 @@ internal unsafe class VulkanDevices : IDisposable
         PresentQueue = presentQueue;
     }
 
+    /// <summary>
+    /// Check which queue families are supported by the physical device.
+    /// Queue families allocate VkQueues, which have operations submitted to them to be asynchronously executed.
+    /// </summary>
     internal static QueueFamilyIndices FindQueueFamilies(Vk vk, PhysicalDevice physicalDevice, VulkanSurface surface)
     {
         QueueFamilyIndices queueFamilyIndices = new();
@@ -76,12 +97,12 @@ internal unsafe class VulkanDevices : IDisposable
         return queueFamilyIndices;
     }
 
-    private static string[] GetDeviceExtensions()
+    private static string[] GetRequiredDeviceExtensions()
     {
         return [KhrSwapchain.ExtensionName];
     }
 
-    private static (PhysicalDevice, QueueFamilyIndices) PickPhysicalDevice(Instance instance, Vk vk, VulkanSurface surface)
+    private static (PhysicalDevice, QueueFamilyIndices) SelectPhysicalDevice(Instance instance, Vk vk, VulkanSurface surface)
     {
         PhysicalDevice? physicalDevice = null;
         QueueFamilyIndices? queueFamily = null;
@@ -138,7 +159,7 @@ internal unsafe class VulkanDevices : IDisposable
 
         HashSet<string?> availableExtensionNames = [.. availableExtensions.Select(extension => Marshal.PtrToStringAnsi((IntPtr)extension.ExtensionName))];
 
-        return GetDeviceExtensions().All(availableExtensionNames.Contains);
+        return GetRequiredDeviceExtensions().All(availableExtensionNames.Contains);
     }
 
     private static Device CreateLogicalDevice(Vk vk, PhysicalDevice physicalDevice, uint graphicsIndex, uint presentIndex, VulkanSurface surface, bool enableValidationLayers)
@@ -161,7 +182,7 @@ internal unsafe class VulkanDevices : IDisposable
             };
         }
 
-        string[] deviceExtensions = GetDeviceExtensions();
+        string[] deviceExtensions = GetRequiredDeviceExtensions();
         PhysicalDeviceFeatures deviceFeatures = new();
 
         DeviceCreateInfo createInfo = new()
