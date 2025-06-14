@@ -25,6 +25,7 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
     private readonly Vk _vk;
     private readonly Instance _instance;
     private readonly VulkanDebugger? _debugger;
+    private readonly VulkanSurface _surface;
     private readonly VulkanDevices _devices;
     private bool _enableValidationLayers = false;
     private bool _disposed = false;
@@ -64,7 +65,9 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         _vk = Vk.GetApi();
         _instance = CreateInstance(engineConfig);
         _debugger = !_enableValidationLayers ? null : new VulkanDebugger(_instance, _vk, logger);
-        _devices = new VulkanDevices(_silkWindow, _instance, _vk, _enableValidationLayers);
+        _surface = new VulkanSurface(_silkWindow, _instance, _vk);
+        _devices = new VulkanDevices(_instance, _vk, _surface, _enableValidationLayers);
+        //TODO: Swap chain.
     }
 
     public IInputContext GetWindowInputContext() => _silkWindow.CreateInput();
@@ -160,6 +163,7 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
             {
                 _devices.Dispose();
                 _debugger?.Dispose();
+                _surface.Dispose();
                 _vk.DestroyInstance(_instance, null);
                 _vk.Dispose();
                 _silkWindow.Dispose();

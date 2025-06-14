@@ -24,6 +24,11 @@ internal unsafe class VulkanDebugger : IDisposable
         Messenger = CreateDebugMessenger(Utils, _instance, logger);
     }
 
+    internal static string[] GetEnabledLayerNames()
+    {
+        return ["VK_LAYER_KHRONOS_validation"];
+    }
+
     internal static void CheckValidationLayerSupport(Vk vk, string vulkanSDKVersion)
     {
         uint layerCount = 0;
@@ -41,11 +46,6 @@ internal unsafe class VulkanDebugger : IDisposable
         {
             throw new Exception($"Vulkan validation layers requested, but not available. Verify Vulkan SDK {vulkanSDKVersion}, or greater, is installed.");
         }
-    }
-
-    internal static string[] GetEnabledLayerNames()
-    {
-        return ["VK_LAYER_KHRONOS_validation"];
     }
 
     internal static void PopulateDebugMessengerCreateInfo(ref DebugUtilsMessengerCreateInfoEXT createInfo, ILogger<IGraphicsDevice> logger)
