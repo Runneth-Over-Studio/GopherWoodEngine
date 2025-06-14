@@ -10,6 +10,9 @@ namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.Submodules;
 
 internal unsafe class VulkanDebugger : IDisposable
 {
+    /// <summary>
+    /// Represents a debug messenger that is specific to our Vulkan instance and its layers, that receives messages from the Vulkan API.
+    /// </summary>
     internal DebugUtilsMessengerEXT? Messenger { get; }
 
     private readonly ExtDebugUtils? _utils;
@@ -24,11 +27,22 @@ internal unsafe class VulkanDebugger : IDisposable
         Messenger = CreateDebugMessenger(_utils, _instance, logger);
     }
 
+    /// <summary>
+    /// Returns the names of the enabled validation layers.
+    /// Validation layers are optional components that hook into Vulkan function calls to 
+    /// catch common mistakes and provide additional debugging information.
+    /// </summary>
+    /// <remarks>
+    /// LunarG Vulkan SDK required to be installed.
+    /// </remarks>
     internal static string[] GetEnabledLayerNames()
     {
         return ["VK_LAYER_KHRONOS_validation"];
     }
 
+    /// <summary>
+    /// Check if all of the requested layers are available. 
+    /// </summary>
     internal static void CheckValidationLayerSupport(Vk vk, string vulkanSDKVersion)
     {
         uint layerCount = 0;
@@ -48,6 +62,9 @@ internal unsafe class VulkanDebugger : IDisposable
         }
     }
 
+    /// <summary>
+    /// Fill in <see cref="DebugUtilsMessengerCreateInfoEXT"/> structure with details about the messenger and its callback:
+    /// </summary>
     internal static void PopulateDebugMessengerCreateInfo(ref DebugUtilsMessengerCreateInfoEXT createInfo, ILogger<IGraphicsDevice> logger)
     {
         createInfo.SType = StructureType.DebugUtilsMessengerCreateInfoExt;
@@ -85,7 +102,7 @@ internal unsafe class VulkanDebugger : IDisposable
 
         logger?.Log(logLevel, "Vulkan: {message}", Marshal.PtrToStringAnsi((nint)pCallbackData->PMessage));
 
-        return Vk.False;
+        return Vk.False; // False means don't abort with the VK_ERROR_VALIDATION_FAILED_EXT error.
     }
 
     private static ExtDebugUtils? GetExtDebugUtils(Instance instance, Vk vk)
