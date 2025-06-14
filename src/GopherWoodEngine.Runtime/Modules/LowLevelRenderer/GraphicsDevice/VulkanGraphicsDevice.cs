@@ -68,7 +68,7 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         _debugger = !_enableValidationLayers ? null : new VulkanDebugger(_instance, _vk, logger);
         _surface = new VulkanSurface(_silkWindow, _instance, _vk);
         _devices = new VulkanDevices(_instance, _vk, _surface, _enableValidationLayers);
-        _swapChain = new VulkanSwapChain(_silkWindow, _instance, _vk, _surface, _devices);
+        _swapChain = new VulkanSwapChain(_instance, _vk, _surface, _devices, _silkWindow.FramebufferSize);
     }
 
     public IInputContext GetWindowInputContext() => _silkWindow.CreateInput();

@@ -1,7 +1,6 @@
 ﻿using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
-using Silk.NET.Windowing;
 using System;
 using System.Collections.Generic;
 using Device = Silk.NET.Vulkan.Device;
@@ -19,7 +18,7 @@ internal unsafe class VulkanSwapChain : IDisposable
     private readonly Device _logicalDevice;
     private bool _disposed = false;
 
-    public VulkanSwapChain(IWindow window, Instance instance, Vk vk, VulkanSurface surface, VulkanDevices devices)
+    public VulkanSwapChain(Instance instance, Vk vk, VulkanSurface surface, VulkanDevices devices, Vector2D<int> framebufferSize)
     {
         _logicalDevice = devices.LogicalDevice;
 
@@ -29,7 +28,7 @@ internal unsafe class VulkanSwapChain : IDisposable
         }
 
         SwapChainSupport swapChainSupport = surface.GetSwapChainSupport(devices.PhysicalDevice);
-        _extent2D = ChooseSwapExtent(window, swapChainSupport.Capabilities);
+        _extent2D = ChooseSwapExtent(swapChainSupport.Capabilities, framebufferSize);
 
         uint imageCount = swapChainSupport.Capabilities.MinImageCount + 1;
         if (swapChainSupport.Capabilities.MaxImageCount > 0 && imageCount > swapChainSupport.Capabilities.MaxImageCount)
@@ -126,7 +125,7 @@ internal unsafe class VulkanSwapChain : IDisposable
         return PresentModeKHR.FifoKhr;
     }
 
-    private static Extent2D ChooseSwapExtent(IWindow window, SurfaceCapabilitiesKHR capabilities)
+    private static Extent2D ChooseSwapExtent(SurfaceCapabilitiesKHR capabilities, Vector2D<int> framebufferSize)
     {
         if (capabilities.CurrentExtent.Width != uint.MaxValue)
         {
@@ -134,8 +133,6 @@ internal unsafe class VulkanSwapChain : IDisposable
         }
         else
         {
-            Vector2D<int> framebufferSize = window.FramebufferSize;
-
             Extent2D actualExtent = new()
             {
                 Width = (uint)framebufferSize.X,
