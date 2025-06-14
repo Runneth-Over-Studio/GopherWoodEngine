@@ -74,7 +74,6 @@ internal unsafe class VulkanSurface : IDisposable
             {
                 _khrSurface.GetPhysicalDeviceSurfacePresentModes(physicalDevice, SurfaceKHR, ref presentModeCount, formatsPtr);
             }
-
         }
         else
         {

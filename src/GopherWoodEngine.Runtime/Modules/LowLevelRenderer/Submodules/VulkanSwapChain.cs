@@ -69,7 +69,7 @@ internal unsafe class VulkanSwapChain : IDisposable
             ImageUsage = ImageUsageFlags.ColorAttachmentBit
         };
 
-        QueueFamilyIndices indices = VulkanDevices.FindQueueFamilies(vk, devices.PhysicalDevice, surface);
+        QueueFamilyIndices indices = devices.QueueFamilyIndices;
         uint* queueFamilyIndices = stackalloc[] { indices.GraphicsIndex!.Value, indices.PresentIndex!.Value };
 
         if (indices.GraphicsIndex != indices.PresentIndex)

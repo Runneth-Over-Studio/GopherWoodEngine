@@ -1,4 +1,5 @@
-﻿using Silk.NET.Core.Native;
+﻿using Microsoft.Extensions.Logging;
+using Silk.NET.Core.Native;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 using System;
@@ -21,6 +22,12 @@ internal unsafe class VulkanDevices : IDisposable
     /// Used to interface with the physical device, allowing for resource management and command submission.
     /// </summary>
     internal Device LogicalDevice { get; }
+
+    /// <summary>
+    /// Indices of the queue families that are supported by the physical device.
+    /// Queue families allocate VkQueues, which have operations submitted to them to be asynchronously executed.
+    /// </summary>
+    internal QueueFamilyIndices QueueFamilyIndices { get; }
 
     /// <summary>
     /// Graphics processing queue used for executing GPU commands.
@@ -48,69 +55,13 @@ internal unsafe class VulkanDevices : IDisposable
         }
 
         PhysicalDevice = physicalDevice;
+        QueueFamilyIndices = indices;
         LogicalDevice = CreateLogicalDevice(vk, physicalDevice, indices.GraphicsIndex.Value, indices.PresentIndex.Value, surface, enableValidationLayers);
 
         vk.GetDeviceQueue(LogicalDevice, indices.GraphicsIndex.Value, 0, out Queue graphicsQueue);
         vk.GetDeviceQueue(LogicalDevice, indices.PresentIndex.Value, 0, out Queue presentQueue);
         GraphicsQueue = graphicsQueue;
         PresentQueue = presentQueue;
-    }
-
-    /// <summary>
-    /// Check which queue families are supported by the physical device.
-    /// Queue families allocate VkQueues, which have operations submitted to them to be asynchronously executed.
-    /// </summary>
-    internal static QueueFamilyIndices FindQueueFamilies(Vk vk, PhysicalDevice physicalDevice, VulkanSurface surface)
-    {
-        QueueFamilyIndices queueFamilyIndices = new();
-
-        uint queueFamilityCount = 0;
-        vk.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, ref queueFamilityCount, null);
-
-        QueueFamilyProperties[] queueFamilies = new QueueFamilyProperties[queueFamilityCount];
-        fixed (QueueFamilyProperties* queueFamiliesPtr = queueFamilies)
-        {
-            vk.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, ref queueFamilityCount, queueFamiliesPtr);
-        }
-
-        uint i = 0;
-        uint minTransferScore = 255; // Arbitrary score to prioritize transfer queues.
-        foreach (QueueFamilyProperties queueFamily in queueFamilies)
-        {
-            uint currentTransferScore = 0;
-
-            if (queueFamily.QueueFlags.HasFlag(QueueFlags.GraphicsBit))
-            {
-                queueFamilyIndices.GraphicsIndex = i;
-                ++currentTransferScore;
-            }
-
-            if (queueFamily.QueueFlags.HasFlag(QueueFlags.ComputeBit))
-            {
-                queueFamilyIndices.ComputeIndex = i;
-                ++currentTransferScore;
-            }
-
-            if (queueFamily.QueueFlags.HasFlag(QueueFlags.TransferBit) && currentTransferScore <= minTransferScore)
-            {
-                minTransferScore = currentTransferScore; // Take the index if it is the current lowest. This increases the liklihood that it is a dedicated transfer queue.
-                queueFamilyIndices.TransferIndex = i;
-            }
-
-            if (surface.PresentIsSupported(physicalDevice, i))
-            {
-                queueFamilyIndices.PresentIndex = i;
-            }
-
-            if (queueFamilyIndices.IsComplete)
-            {
-                break;
-            }
-
-            i++;
-        }
-
-        return queueFamilyIndices;
     }
 
     private static string[] GetRequiredDeviceExtensions()
@@ -123,15 +74,17 @@ internal unsafe class VulkanDevices : IDisposable
         PhysicalDevice? physicalDevice = null;
         QueueFamilyIndices? queueFamily = null;
 
-        IReadOnlyCollection<PhysicalDevice> devices = vk.GetPhysicalDevices(instance);
-
-        foreach (PhysicalDevice device in devices)
+        foreach (PhysicalDevice device in vk.GetPhysicalDevices(instance))
         {
-            queueFamily = IsDeviceSuitable(vk, device, surface);
-            if (queueFamily != null)
+            if (IsDeviceSuitable(vk, device, surface))
             {
-                physicalDevice = device;
-                break;
+                queueFamily = FindQueueFamilies(vk, device, surface);
+
+                if (queueFamily != null)
+                {
+                    physicalDevice = device;
+                    break;
+                }
             }
         }
 
@@ -143,7 +96,7 @@ internal unsafe class VulkanDevices : IDisposable
         return (physicalDevice.Value, queueFamily.Value);
     }
 
-    private static QueueFamilyIndices? IsDeviceSuitable(Vk vk, PhysicalDevice physicalDevice, VulkanSurface surface)
+    private static bool IsDeviceSuitable(Vk vk, PhysicalDevice physicalDevice, VulkanSurface surface)
     {
         bool extensionsSupported = CheckDeviceExtensionsSupport(vk, physicalDevice);
 
@@ -154,12 +107,7 @@ internal unsafe class VulkanDevices : IDisposable
             swapChainAdequate = swapChainSupport.Formats.Length != 0 && swapChainSupport.PresentModes.Length != 0;
         }
 
-        if (extensionsSupported && swapChainAdequate)
-        {
-            return FindQueueFamilies(vk, physicalDevice, surface);
-        }
-
-        return null;
+        return extensionsSupported && swapChainAdequate;
     }
 
     private static bool CheckDeviceExtensionsSupport(Vk vk, PhysicalDevice physicalDevice)
@@ -176,6 +124,53 @@ internal unsafe class VulkanDevices : IDisposable
         HashSet<string?> availableExtensionNames = [.. availableExtensions.Select(extension => Marshal.PtrToStringAnsi((IntPtr)extension.ExtensionName))];
 
         return GetRequiredDeviceExtensions().All(availableExtensionNames.Contains);
+    }
+
+    private static QueueFamilyIndices FindQueueFamilies(Vk vk, PhysicalDevice physicalDevice, VulkanSurface surface)
+    {
+        QueueFamilyIndices queueFamilyIndices = new();
+
+        uint queueFamilityCount = 0;
+        vk.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, ref queueFamilityCount, null);
+
+        QueueFamilyProperties[] queueFamilies = new QueueFamilyProperties[queueFamilityCount];
+        fixed (QueueFamilyProperties* queueFamiliesPtr = queueFamilies)
+        {
+            vk.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, ref queueFamilityCount, queueFamiliesPtr);
+        }
+
+        uint i = 0;
+        HashSet<uint> usedIndices = [];
+        foreach (QueueFamilyProperties queueFamily in queueFamilies)
+        {
+            if (queueFamilyIndices.GraphicsIndex == null && queueFamily.QueueFlags.HasFlag(QueueFlags.GraphicsBit))
+            {
+                queueFamilyIndices.GraphicsIndex = i;
+                usedIndices.Add(i);
+            }
+
+            if ((queueFamilyIndices.ComputeIndex == null || !usedIndices.Contains(i)) && queueFamily.QueueFlags.HasFlag(QueueFlags.ComputeBit))
+            {
+                queueFamilyIndices.ComputeIndex = i;
+                usedIndices.Add(i);
+            }
+
+            if ((queueFamilyIndices.PresentIndex == null || !usedIndices.Contains(i)) && surface.PresentIsSupported(physicalDevice, i))
+            {
+                queueFamilyIndices.PresentIndex = i;
+                usedIndices.Add(i);
+            }
+
+            if ((queueFamilyIndices.TransferIndex == null || !usedIndices.Contains(i)) && queueFamily.QueueFlags.HasFlag(QueueFlags.TransferBit))
+            {
+                queueFamilyIndices.TransferIndex = i;
+                usedIndices.Add(i);
+            }
+
+            i++;
+        }
+
+        return queueFamilyIndices;
     }
 
     private static Device CreateLogicalDevice(Vk vk, PhysicalDevice physicalDevice, uint graphicsIndex, uint presentIndex, VulkanSurface surface, bool enableValidationLayers)
