@@ -9,7 +9,11 @@ namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.Submodules;
 
 internal unsafe class VulkanSwapChain : IDisposable
 {
-    internal SwapchainKHR Swapchain { get; }
+    /// <summary>
+    /// Basic purpose is to ensure that the image that we're currently rendering to is different from the one that is currently on the screen. 
+    /// This is important to make sure that only complete images are shown.
+    /// </summary>
+    internal SwapchainKHR SwapChain { get; }
 
     private readonly KhrSwapchain _khrSwapChain;
     private readonly Extent2D _extent2D;
@@ -37,13 +41,13 @@ internal unsafe class VulkanSwapChain : IDisposable
         }
 
         SurfaceFormatKHR surfaceFormat = ChooseSwapSurfaceFormat(swapChainSupport.Formats);
-        Swapchain = CreateSwapchain(vk, surface, devices, swapChainSupport, surfaceFormat, imageCount);
+        SwapChain = CreateSwapchain(vk, surface, devices, swapChainSupport, surfaceFormat, imageCount);
 
-        _khrSwapChain.GetSwapchainImages(_logicalDevice, Swapchain, ref imageCount, null);
+        _khrSwapChain.GetSwapchainImages(_logicalDevice, SwapChain, ref imageCount, null);
         _images = new Image[imageCount];
         fixed (Image* swapChainImagesPtr = _images)
         {
-            _khrSwapChain.GetSwapchainImages(_logicalDevice, Swapchain, ref imageCount, swapChainImagesPtr);
+            _khrSwapChain.GetSwapchainImages(_logicalDevice, SwapChain, ref imageCount, swapChainImagesPtr);
         }
 
         _format = surfaceFormat.Format;
@@ -158,7 +162,7 @@ internal unsafe class VulkanSwapChain : IDisposable
         {
             if (disposing)
             {
-                _khrSwapChain!.DestroySwapchain(_logicalDevice, Swapchain, null);
+                _khrSwapChain!.DestroySwapchain(_logicalDevice, SwapChain, null);
             }
 
             _disposed = true;
