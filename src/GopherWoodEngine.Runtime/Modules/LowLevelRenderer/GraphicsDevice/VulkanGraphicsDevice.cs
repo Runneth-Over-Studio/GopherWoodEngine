@@ -164,8 +164,8 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
             {
                 _swapChain.Dispose();
                 _devices.Dispose();
-                _debugger?.Dispose();
                 _surface.Dispose();
+                _debugger?.Dispose();
                 _vk.DestroyInstance(_instance, null);
                 _vk.Dispose();
                 _silkWindow.Dispose();
