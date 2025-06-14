@@ -39,6 +39,43 @@ internal unsafe class VulkanDevices : IDisposable
         PresentQueue = presentQueue;
     }
 
+    internal static QueueFamilyIndices FindQueueFamilies(Vk vk, PhysicalDevice physicalDevice, VulkanSurface surface)
+    {
+        QueueFamilyIndices queueFamilyIndices = new();
+
+        uint queueFamilityCount = 0;
+        vk.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, ref queueFamilityCount, null);
+
+        QueueFamilyProperties[] queueFamilies = new QueueFamilyProperties[queueFamilityCount];
+        fixed (QueueFamilyProperties* queueFamiliesPtr = queueFamilies)
+        {
+            vk.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, ref queueFamilityCount, queueFamiliesPtr);
+        }
+
+        uint i = 0;
+        foreach (QueueFamilyProperties queueFamily in queueFamilies)
+        {
+            if (queueFamilyIndices.GraphicsIndex == null && queueFamily.QueueFlags.HasFlag(QueueFlags.GraphicsBit))
+            {
+                queueFamilyIndices.GraphicsIndex = i;
+            }
+
+            if (queueFamilyIndices.PresentIndex == null && surface.PresentIsSupported(physicalDevice, i))
+            {
+                queueFamilyIndices.PresentIndex = i;
+            }
+
+            if (queueFamilyIndices.IsComplete)
+            {
+                break;
+            }
+
+            i++;
+        }
+
+        return queueFamilyIndices;
+    }
+
     private static string[] GetDeviceExtensions()
     {
         return [KhrSwapchain.ExtensionName];
@@ -86,43 +123,6 @@ internal unsafe class VulkanDevices : IDisposable
         }
 
         return null;
-    }
-
-    private static QueueFamilyIndices FindQueueFamilies(Vk vk, PhysicalDevice physicalDevice, VulkanSurface surface)
-    {
-        QueueFamilyIndices queueFamilyIndices = new();
-
-        uint queueFamilityCount = 0;
-        vk.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, ref queueFamilityCount, null);
-
-        QueueFamilyProperties[] queueFamilies = new QueueFamilyProperties[queueFamilityCount];
-        fixed (QueueFamilyProperties* queueFamiliesPtr = queueFamilies)
-        {
-            vk.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, ref queueFamilityCount, queueFamiliesPtr);
-        }
-
-        uint i = 0;
-        foreach (QueueFamilyProperties queueFamily in queueFamilies)
-        {
-            if (queueFamilyIndices.GraphicsIndex == null && queueFamily.QueueFlags.HasFlag(QueueFlags.GraphicsBit))
-            {
-                queueFamilyIndices.GraphicsIndex = i;
-            }
-
-            if (queueFamilyIndices.PresentIndex == null && surface.PresentIsSupported(physicalDevice, i))
-            {
-                queueFamilyIndices.PresentIndex = i;
-            }
-
-            if (queueFamilyIndices.IsComplete)
-            {
-                break;
-            }
-
-            i++;
-        }
-
-        return queueFamilyIndices;
     }
 
     private static bool CheckDeviceExtensionsSupport(Vk vk, PhysicalDevice physicalDevice)

@@ -10,9 +10,9 @@ namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.Submodules;
 
 internal unsafe class VulkanDebugger : IDisposable
 {
-    internal ExtDebugUtils? Utils { get; }
     internal DebugUtilsMessengerEXT? Messenger { get; }
 
+    private readonly ExtDebugUtils? _utils;
     private readonly Instance _instance;
     private bool _disposed = false;
 
@@ -20,8 +20,8 @@ internal unsafe class VulkanDebugger : IDisposable
     {
         _instance = instance;
 
-        Utils = GetExtDebugUtils(_instance, vk);
-        Messenger = CreateDebugMessenger(Utils, _instance, logger);
+        _utils = GetExtDebugUtils(_instance, vk);
+        Messenger = CreateDebugMessenger(_utils, _instance, logger);
     }
 
     internal static string[] GetEnabledLayerNames()
@@ -126,9 +126,9 @@ internal unsafe class VulkanDebugger : IDisposable
     {
         if (!_disposed)
         {
-            if (disposing && Utils != null && Messenger != null)
+            if (disposing && _utils != null && Messenger != null)
             {
-                Utils.DestroyDebugUtilsMessenger(_instance, Messenger.Value, null);
+                _utils.DestroyDebugUtilsMessenger(_instance, Messenger.Value, null);
             }
 
             _disposed = true;
