@@ -14,7 +14,7 @@ internal unsafe class VulkanSwapChain : IDisposable
 
     private readonly KhrSwapchain _khrSwapChain;
     private readonly Extent2D _extent2D;
-    private readonly Image[]? _images;
+    private readonly Image[] _images;
     private readonly Format _format;
     private readonly Device _logicalDevice;
     private bool _disposed = false;
