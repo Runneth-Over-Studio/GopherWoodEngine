@@ -1,4 +1,5 @@
 ﻿using Silk.NET.Maths;
+using Silk.NET.OpenAL;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 using System;
@@ -19,11 +20,14 @@ internal unsafe class VulkanSwapChain : IDisposable
     private readonly Extent2D _extent2D;
     private readonly Image[] _images;
     private readonly Format _format;
+    private readonly ImageView[] _swapChainImageViews;
+    private readonly Vk _vk;
     private readonly Device _logicalDevice;
     private bool _disposed = false;
 
     public VulkanSwapChain(Instance instance, Vk vk, VulkanSurface surface, VulkanDevices devices, Vector2D<int> framebufferSize)
     {
+        _vk = vk;
         _logicalDevice = devices.LogicalDevice;
 
         if (!vk.TryGetDeviceExtension(instance, _logicalDevice, out _khrSwapChain))
@@ -51,6 +55,7 @@ internal unsafe class VulkanSwapChain : IDisposable
         }
 
         _format = surfaceFormat.Format;
+        _swapChainImageViews = CreateImageViews(vk, _logicalDevice, _images, _format);
     }
 
     private SwapchainKHR CreateSwapchain(Vk vk, VulkanSurface surface, VulkanDevices devices, SwapChainSupport swapChainSupport, SurfaceFormatKHR surfaceFormat, uint imageCount)
@@ -150,6 +155,44 @@ internal unsafe class VulkanSwapChain : IDisposable
         }
     }
 
+    private static ImageView[] CreateImageViews(Vk vk, Device logicalDevice, Image[] swapChainImages, Format swapChainImageFormat)
+    {
+        ImageView[] swapChainImageViews = new ImageView[swapChainImages.Length];
+
+        for (int i = 0; i < swapChainImages.Length; i++)
+        {
+            ImageViewCreateInfo createInfo = new()
+            {
+                SType = StructureType.ImageViewCreateInfo,
+                Image = swapChainImages[i],
+                ViewType = ImageViewType.Type2D,
+                Format = swapChainImageFormat,
+                Components =
+                {
+                    R = ComponentSwizzle.Identity,
+                    G = ComponentSwizzle.Identity,
+                    B = ComponentSwizzle.Identity,
+                    A = ComponentSwizzle.Identity
+                },
+                SubresourceRange =
+                {
+                    AspectMask = ImageAspectFlags.ColorBit,
+                    BaseMipLevel = 0,
+                    LevelCount = 1,
+                    BaseArrayLayer = 0,
+                    LayerCount = 1
+                }
+            };
+
+            if (vk.CreateImageView(logicalDevice, in createInfo, null, out swapChainImageViews[i]) != Result.Success)
+            {
+                throw new Exception("Failed to create image views.");
+            }
+        }
+
+        return swapChainImageViews;
+    }
+
     public void Dispose()
     {
         Dispose(disposing: true);
@@ -162,6 +205,11 @@ internal unsafe class VulkanSwapChain : IDisposable
         {
             if (disposing)
             {
+                foreach (ImageView imageView in _swapChainImageViews)
+                {
+                    _vk.DestroyImageView(_logicalDevice, imageView, null);
+                }
+
                 _khrSwapChain!.DestroySwapchain(_logicalDevice, SwapChain, null);
             }
 
