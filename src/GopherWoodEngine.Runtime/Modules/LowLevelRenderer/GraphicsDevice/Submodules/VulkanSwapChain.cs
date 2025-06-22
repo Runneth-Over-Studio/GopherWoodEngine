@@ -25,11 +25,17 @@ internal unsafe class VulkanSwapChain : IDisposable
     /// </summary>
     internal Format ImageFormat { get; }
 
+    /// <summary>
+    /// Image view for every image in the swap chain.
+    /// Image views describe how to access the image and which part of the image to access.
+    /// </summary>
+    internal ImageView[] ImageViews { get; }
+
     private readonly KhrSwapchain _khrSwapChain;
     private readonly Image[] _images;
-    private readonly ImageView[] _swapChainImageViews;
     private readonly Vk _vk;
     private readonly Device _logicalDevice;
+    
     private bool _disposed = false;
 
     public VulkanSwapChain(Instance instance, Vk vk, VulkanSurface surface, VulkanDevices devices, Vector2D<int> framebufferSize)
@@ -62,7 +68,7 @@ internal unsafe class VulkanSwapChain : IDisposable
         }
 
         ImageFormat = surfaceFormat.Format;
-        _swapChainImageViews = CreateImageViews(vk, _logicalDevice, _images, ImageFormat);
+        ImageViews = CreateImageViews(vk, _logicalDevice, _images, ImageFormat);
     }
 
     private SwapchainKHR CreateSwapchain(Vk vk, VulkanSurface surface, VulkanDevices devices, SwapChainSupport swapChainSupport, SurfaceFormatKHR surfaceFormat, uint imageCount)
@@ -212,7 +218,7 @@ internal unsafe class VulkanSwapChain : IDisposable
         {
             if (disposing)
             {
-                foreach (ImageView imageView in _swapChainImageViews)
+                foreach (ImageView imageView in ImageViews)
                 {
                     _vk.DestroyImageView(_logicalDevice, imageView, null);
                 }

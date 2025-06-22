@@ -10,9 +10,15 @@ namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submo
 
 internal unsafe class VulkanPipeline : IDisposable
 {
-    private readonly RenderPass _renderPass;
+    /// <summary>
+    /// Specifies how many color and depth buffers there will be, how many samples to use for each of them 
+    /// and how their contents should be handled throughout the rendering operations.
+    /// </summary>
+    internal RenderPass RenderPass { get; }
+
     private readonly PipelineLayout _pipelineLayout;
     private readonly Pipeline _graphicsPipeline;
+    private readonly Framebuffer[] _framebuffers;
     private readonly VulkanSwapChain _swapChain;
     private readonly Vk _vk;
     private readonly Device _logicalDevice;
@@ -23,9 +29,10 @@ internal unsafe class VulkanPipeline : IDisposable
         _vk = vk;
         _logicalDevice = logicalDevice;
         _swapChain = swapChain;
-        _renderPass = CreateRenderPass();
+        RenderPass = CreateRenderPass();
         _pipelineLayout = CreatePipelineLayout();
         _graphicsPipeline = CreateGraphicsPipeline("09_shader_base.vert.spv", "09_shader_base.frag.spv");
+        _framebuffers = CreateFramebuffers();
     }
 
     private RenderPass CreateRenderPass()
@@ -208,7 +215,7 @@ internal unsafe class VulkanPipeline : IDisposable
             PMultisampleState = &multisampling,
             PColorBlendState = &colorBlending,
             Layout = _pipelineLayout,
-            RenderPass = _renderPass,
+            RenderPass = RenderPass,
             Subpass = 0,
             BasePipelineHandle = default
         };
@@ -225,6 +232,38 @@ internal unsafe class VulkanPipeline : IDisposable
         SilkMarshal.Free((nint)fragShaderStageInfo.PName);
 
         return graphicsPipeline;
+    }
+
+    /// <summary>
+    /// Creates a framebuffer (compatible with render pass) for all of the images in the swap chain, to 
+    /// use the one that corresponds to the retrieved image at drawing time.
+    /// </summary>
+    private Framebuffer[] CreateFramebuffers()
+    {
+        Framebuffer[] framebuffers = new Framebuffer[_swapChain.ImageViews.Length];
+
+        for (int i = 0; i < _swapChain.ImageViews.Length; i++)
+        {
+            ImageView attachment = _swapChain.ImageViews[i];
+
+            FramebufferCreateInfo framebufferInfo = new()
+            {
+                SType = StructureType.FramebufferCreateInfo,
+                RenderPass = RenderPass,
+                AttachmentCount = 1,
+                PAttachments = &attachment,
+                Width = _swapChain.Extent.Width,
+                Height = _swapChain.Extent.Height,
+                Layers = 1
+            };
+
+            if (_vk.CreateFramebuffer(_logicalDevice, in framebufferInfo, null, out framebuffers[i]) != Result.Success)
+            {
+                throw new Exception("Failed to create framebuffer.");
+            }
+        }
+
+        return framebuffers;
     }
 
     private ShaderModule CreateShaderModule(byte[] code)
@@ -291,9 +330,14 @@ internal unsafe class VulkanPipeline : IDisposable
         {
             if (disposing)
             {
+                foreach (Framebuffer framebuffer in _framebuffers)
+                {
+                    _vk.DestroyFramebuffer(_logicalDevice, framebuffer, null);
+                }
+
                 _vk.DestroyPipeline(_logicalDevice, _graphicsPipeline, null);
                 _vk.DestroyPipelineLayout(_logicalDevice, _pipelineLayout, null);
-                _vk.DestroyRenderPass(_logicalDevice, _renderPass, null);
+                _vk.DestroyRenderPass(_logicalDevice, RenderPass, null);
             }
 
             _disposed = true;
