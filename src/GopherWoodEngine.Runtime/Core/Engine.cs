@@ -33,16 +33,16 @@ public class Engine : IDisposable
         eventSystem.Subscribe<WindowResizeEventArgs>(OnResize);
         eventSystem.Subscribe<WindowCloseEventArgs>(OnWindowClosing);
 
-        _logger.LogTrace("Engine initialized.");
+        _logger.LogDebug("Engine initialized.");
     }
 
     public void Run()
     {
-        _logger.LogTrace("Initiating game loop...");
+        _logger.LogDebug("Initiating game loop...");
 
         _graphicsDevice.InitiateWindowMessageLoop();
 
-        _logger.LogTrace("Exited game loop.");
+        _logger.LogDebug("Exited game loop.");
     }
 
     private void OnUpdate(object? sender, WindowUpdateEventArgs e)
@@ -86,7 +86,7 @@ public class Engine : IDisposable
                 EventSystem.Dispose();
                 _graphicsDevice.Dispose();
 
-                _logger.LogTrace("Engine disposed.");
+                _logger.LogDebug("Engine disposed.");
             }
 
             _disposed = true;

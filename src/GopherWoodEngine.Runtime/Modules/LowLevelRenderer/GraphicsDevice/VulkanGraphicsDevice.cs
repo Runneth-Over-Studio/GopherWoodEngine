@@ -28,6 +28,7 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
     private readonly VulkanSurface _surface;
     private readonly VulkanDevices _devices;
     private readonly VulkanSwapChain _swapChain;
+    private readonly VulkanPipeline _pipeline;
     private bool _enableValidationLayers = false;
     private bool _disposed = false;
 
@@ -69,8 +70,11 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         _surface = new VulkanSurface(_silkWindow, _instance, _vk);
         _devices = new VulkanDevices(_instance, _vk, _surface, _enableValidationLayers);
         _swapChain = new VulkanSwapChain(_instance, _vk, _surface, _devices, _silkWindow.FramebufferSize);
+        _pipeline = new VulkanPipeline(_vk, _devices.LogicalDevice);
 
         LogGraphicsDeviceInfo();
+
+        _pipeline.CreateGraphicsPipeline();
     }
 
     public IInputContext GetWindowInputContext() => _silkWindow.CreateInput();
@@ -164,15 +168,15 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         int vulkanMinor = (int)((properties.ApiVersion >> 12) & 0x3FF);
         int vulkanPatch = (int)(properties.ApiVersion & 0xFFF);
 
-        _logger.LogTrace("GRAPHICS DEVICE:");
-        _logger.LogTrace("... Device Name: {name}", SilkMarshal.PtrToString((nint)properties.DeviceName) ?? "<Unknown>");
-        _logger.LogTrace("... Device Type: {type}", properties.DeviceType);
-        _logger.LogTrace("... GPU Driver Version: {v}", $"{driverMajor}.{driverMinor}.{driverPatch}");
-        _logger.LogTrace("... Vulkan Version: {v}", $"{vulkanMajor}.{vulkanMinor}.{vulkanPatch}");
-        _logger.LogTrace("... Graphics Family Index: {i}", _devices.QueueFamilyIndices.GraphicsIndex?.ToString() ?? "<Not Found>");
-        _logger.LogTrace("... Compute Family Index: {i}", _devices.QueueFamilyIndices.ComputeIndex?.ToString() ?? "<Not Found>");
-        _logger.LogTrace("... Transfer Family Index: {i}", _devices.QueueFamilyIndices.TransferIndex?.ToString() ?? "<Not Found>");
-        _logger.LogTrace("... Present Family Index: {i}", _devices.QueueFamilyIndices.PresentIndex?.ToString() ?? "<Not Found>");
+        _logger.LogDebug("GRAPHICS DEVICE:");
+        _logger.LogDebug("... Device Name: {name}", SilkMarshal.PtrToString((nint)properties.DeviceName) ?? "<Unknown>");
+        _logger.LogDebug("... Device Type: {type}", properties.DeviceType);
+        _logger.LogDebug("... GPU Driver Version: {v}", $"{driverMajor}.{driverMinor}.{driverPatch}");
+        _logger.LogDebug("... Vulkan Version: {v}", $"{vulkanMajor}.{vulkanMinor}.{vulkanPatch}");
+        _logger.LogDebug("... Graphics Family Index: {i}", _devices.QueueFamilyIndices.GraphicsIndex?.ToString() ?? "<Not Found>");
+        _logger.LogDebug("... Compute Family Index: {i}", _devices.QueueFamilyIndices.ComputeIndex?.ToString() ?? "<Not Found>");
+        _logger.LogDebug("... Transfer Family Index: {i}", _devices.QueueFamilyIndices.TransferIndex?.ToString() ?? "<Not Found>");
+        _logger.LogDebug("... Present Family Index: {i}", _devices.QueueFamilyIndices.PresentIndex?.ToString() ?? "<Not Found>");
     }
 
     public void Dispose()
