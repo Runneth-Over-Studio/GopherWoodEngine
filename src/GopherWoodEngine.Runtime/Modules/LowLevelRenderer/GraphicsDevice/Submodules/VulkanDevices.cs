@@ -9,7 +9,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Device = Silk.NET.Vulkan.Device;
 
-namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.Submodules;
+namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submodules;
 
 internal unsafe class VulkanDevices : IDisposable
 {
@@ -121,7 +121,7 @@ internal unsafe class VulkanDevices : IDisposable
             vk.EnumerateDeviceExtensionProperties(physicalDevice, (byte*)null, ref extensionsCount, availableExtensionsPtr);
         }
 
-        HashSet<string?> availableExtensionNames = [.. availableExtensions.Select(extension => Marshal.PtrToStringAnsi((IntPtr)extension.ExtensionName))];
+        HashSet<string?> availableExtensionNames = [.. availableExtensions.Select(extension => Marshal.PtrToStringAnsi((nint)extension.ExtensionName))];
 
         return GetRequiredDeviceExtensions().All(availableExtensionNames.Contains);
     }

@@ -1,12 +1,11 @@
 ﻿using Silk.NET.Maths;
-using Silk.NET.OpenAL;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 using System;
 using System.Collections.Generic;
 using Device = Silk.NET.Vulkan.Device;
 
-namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.Submodules;
+namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submodules;
 
 internal unsafe class VulkanSwapChain : IDisposable
 {
@@ -16,10 +15,18 @@ internal unsafe class VulkanSwapChain : IDisposable
     /// </summary>
     internal SwapchainKHR SwapChain { get; }
 
+    /// <summary>
+    /// Resolution of the swap chain images. Almost always exactly equal to the resolution of the window that we're drawing to in pixels.
+    /// </summary>
+    internal Extent2D Extent { get; }
+
+    /// <summary>
+    /// Specifies the color channels and types.
+    /// </summary>
+    internal Format ImageFormat { get; }
+
     private readonly KhrSwapchain _khrSwapChain;
-    private readonly Extent2D _extent2D;
     private readonly Image[] _images;
-    private readonly Format _format;
     private readonly ImageView[] _swapChainImageViews;
     private readonly Vk _vk;
     private readonly Device _logicalDevice;
@@ -36,7 +43,7 @@ internal unsafe class VulkanSwapChain : IDisposable
         }
 
         SwapChainSupport swapChainSupport = surface.GetSwapChainSupport(devices.PhysicalDevice);
-        _extent2D = ChooseSwapExtent(swapChainSupport.Capabilities, framebufferSize);
+        Extent = ChooseSwapExtent(swapChainSupport.Capabilities, framebufferSize);
 
         uint imageCount = swapChainSupport.Capabilities.MinImageCount + 1;
         if (swapChainSupport.Capabilities.MaxImageCount > 0 && imageCount > swapChainSupport.Capabilities.MaxImageCount)
@@ -54,8 +61,8 @@ internal unsafe class VulkanSwapChain : IDisposable
             _khrSwapChain.GetSwapchainImages(_logicalDevice, SwapChain, ref imageCount, swapChainImagesPtr);
         }
 
-        _format = surfaceFormat.Format;
-        _swapChainImageViews = CreateImageViews(vk, _logicalDevice, _images, _format);
+        ImageFormat = surfaceFormat.Format;
+        _swapChainImageViews = CreateImageViews(vk, _logicalDevice, _images, ImageFormat);
     }
 
     private SwapchainKHR CreateSwapchain(Vk vk, VulkanSurface surface, VulkanDevices devices, SwapChainSupport swapChainSupport, SurfaceFormatKHR surfaceFormat, uint imageCount)
@@ -69,7 +76,7 @@ internal unsafe class VulkanSwapChain : IDisposable
             MinImageCount = imageCount,
             ImageFormat = surfaceFormat.Format,
             ImageColorSpace = surfaceFormat.ColorSpace,
-            ImageExtent = _extent2D,
+            ImageExtent = Extent,
             ImageArrayLayers = 1,
             ImageUsage = ImageUsageFlags.ColorAttachmentBit
         };

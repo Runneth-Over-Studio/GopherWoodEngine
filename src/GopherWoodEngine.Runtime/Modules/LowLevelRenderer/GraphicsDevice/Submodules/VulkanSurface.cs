@@ -4,7 +4,7 @@ using Silk.NET.Vulkan.Extensions.KHR;
 using Silk.NET.Windowing;
 using System;
 
-namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.Submodules;
+namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submodules;
 
 internal unsafe class VulkanSurface : IDisposable
 {

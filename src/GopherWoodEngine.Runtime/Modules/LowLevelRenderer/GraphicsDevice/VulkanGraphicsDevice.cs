@@ -1,4 +1,4 @@
-﻿using GopherWoodEngine.Runtime.Modules.LowLevelRenderer.Submodules;
+﻿using GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submodules;
 using Microsoft.Extensions.Logging;
 using Silk.NET.Core;
 using Silk.NET.Core.Native;
@@ -70,7 +70,7 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         _surface = new VulkanSurface(_silkWindow, _instance, _vk);
         _devices = new VulkanDevices(_instance, _vk, _surface, _enableValidationLayers);
         _swapChain = new VulkanSwapChain(_instance, _vk, _surface, _devices, _silkWindow.FramebufferSize);
-        _pipeline = new VulkanPipeline(_vk, _devices.LogicalDevice);
+        _pipeline = new VulkanPipeline(_vk, _devices.LogicalDevice, _swapChain);
 
         LogGraphicsDeviceInfo();
 
@@ -191,6 +191,7 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         {
             if (disposing)
             {
+                _pipeline.Dispose();
                 _swapChain.Dispose();
                 _devices.Dispose();
                 _surface.Dispose();

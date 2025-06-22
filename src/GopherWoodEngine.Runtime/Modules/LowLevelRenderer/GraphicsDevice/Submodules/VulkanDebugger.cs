@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 
-namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.Submodules;
+namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submodules;
 
 internal unsafe class VulkanDebugger : IDisposable
 {
