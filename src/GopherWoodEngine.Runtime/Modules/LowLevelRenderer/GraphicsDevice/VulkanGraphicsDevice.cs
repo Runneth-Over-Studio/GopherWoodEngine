@@ -73,8 +73,6 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         _pipeline = new VulkanPipeline(_vk, _devices.LogicalDevice, _swapChain);
 
         LogGraphicsDeviceInfo();
-
-        _pipeline.CreateGraphicsPipeline();
     }
 
     public IInputContext GetWindowInputContext() => _silkWindow.CreateInput();
