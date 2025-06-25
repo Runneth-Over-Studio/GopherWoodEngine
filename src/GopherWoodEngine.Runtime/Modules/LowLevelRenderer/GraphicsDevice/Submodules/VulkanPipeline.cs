@@ -16,9 +16,11 @@ internal unsafe class VulkanPipeline : IDisposable
     /// </summary>
     internal RenderPass RenderPass { get; }
 
+    internal Pipeline GraphicsPipeline { get; }
+
+    internal Framebuffer[] Framebuffers { get; }
+
     private readonly PipelineLayout _pipelineLayout;
-    private readonly Pipeline _graphicsPipeline;
-    private readonly Framebuffer[] _framebuffers;
     private readonly VulkanSwapChain _swapChain;
     private readonly Vk _vk;
     private readonly Device _logicalDevice;
@@ -31,8 +33,8 @@ internal unsafe class VulkanPipeline : IDisposable
         _swapChain = swapChain;
         RenderPass = CreateRenderPass();
         _pipelineLayout = CreatePipelineLayout();
-        _graphicsPipeline = CreateGraphicsPipeline("09_shader_base.vert.spv", "09_shader_base.frag.spv");
-        _framebuffers = CreateFramebuffers();
+        GraphicsPipeline = CreateGraphicsPipeline("09_shader_base.vert.spv", "09_shader_base.frag.spv");
+        Framebuffers = CreateFramebuffers();
     }
 
     private RenderPass CreateRenderPass()
@@ -330,12 +332,12 @@ internal unsafe class VulkanPipeline : IDisposable
         {
             if (disposing)
             {
-                foreach (Framebuffer framebuffer in _framebuffers)
+                foreach (Framebuffer framebuffer in Framebuffers)
                 {
                     _vk.DestroyFramebuffer(_logicalDevice, framebuffer, null);
                 }
 
-                _vk.DestroyPipeline(_logicalDevice, _graphicsPipeline, null);
+                _vk.DestroyPipeline(_logicalDevice, GraphicsPipeline, null);
                 _vk.DestroyPipelineLayout(_logicalDevice, _pipelineLayout, null);
                 _vk.DestroyRenderPass(_logicalDevice, RenderPass, null);
             }

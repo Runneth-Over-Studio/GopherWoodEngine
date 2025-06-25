@@ -29,6 +29,8 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
     private readonly VulkanDevices _devices;
     private readonly VulkanSwapChain _swapChain;
     private readonly VulkanPipeline _pipeline;
+    private readonly CommandPool _commandPool;
+    private readonly CommandBuffer[] _commandBuffers;
     private bool _enableValidationLayers = false;
     private bool _disposed = false;
 
@@ -62,6 +64,8 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         _devices = new VulkanDevices(_instance, _vk, _surface, _enableValidationLayers);
         _swapChain = new VulkanSwapChain(_instance, _vk, _surface, _devices, _silkWindow.FramebufferSize);
         _pipeline = new VulkanPipeline(_vk, _devices.LogicalDevice, _swapChain);
+        _commandPool = CreateCommandPool();
+        _commandBuffers = CreateCommandBuffers();
 
         LogGraphicsDeviceInfo();
     }
@@ -156,6 +160,88 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         return vulkanInstance.Value;
     }
 
+    private CommandPool CreateCommandPool()
+    {
+        CommandPoolCreateInfo poolInfo = new()
+        {
+            SType = StructureType.CommandPoolCreateInfo,
+            QueueFamilyIndex = _devices.QueueFamilyIndices.GraphicsIndex!.Value
+        };
+
+        if (_vk.CreateCommandPool(_devices.LogicalDevice, in poolInfo, null, out CommandPool commandPool) != Result.Success)
+        {
+            throw new Exception("Failed to create command pool.");
+        }
+
+        return commandPool;
+    }
+
+    private CommandBuffer[] CreateCommandBuffers()
+    {
+        CommandBuffer[] commandBuffers = new CommandBuffer[_pipeline.Framebuffers.Length];
+
+        CommandBufferAllocateInfo allocInfo = new()
+        {
+            SType = StructureType.CommandBufferAllocateInfo,
+            CommandPool = _commandPool,
+            Level = CommandBufferLevel.Primary,
+            CommandBufferCount = (uint)commandBuffers.Length
+        };
+
+        fixed (CommandBuffer* commandBuffersPtr = commandBuffers)
+        {
+            if (_vk.AllocateCommandBuffers(_devices.LogicalDevice, in allocInfo, commandBuffersPtr) != Result.Success)
+            {
+                throw new Exception("Failed to allocate command buffers.");
+            }
+        }
+
+        for (int i = 0; i < commandBuffers.Length; i++)
+        {
+            CommandBufferBeginInfo beginInfo = new()
+            {
+                SType = StructureType.CommandBufferBeginInfo
+            };
+
+            if (_vk.BeginCommandBuffer(commandBuffers[i], in beginInfo) != Result.Success)
+            {
+                throw new Exception("Failed to begin recording command buffer.");
+            }
+
+            RenderPassBeginInfo renderPassInfo = new()
+            {
+                SType = StructureType.RenderPassBeginInfo,
+                RenderPass = _pipeline.RenderPass,
+                Framebuffer = _pipeline.Framebuffers[i],
+                RenderArea =
+                {
+                    Offset = { X = 0, Y = 0 },
+                    Extent = _swapChain.Extent
+                }
+            };
+
+            ClearValue clearColor = new()
+            {
+                Color = new() { Float32_0 = 0, Float32_1 = 0, Float32_2 = 0, Float32_3 = 1 }
+            };
+
+            renderPassInfo.ClearValueCount = 1;
+            renderPassInfo.PClearValues = &clearColor;
+
+            _vk.CmdBeginRenderPass(commandBuffers[i], &renderPassInfo, SubpassContents.Inline);
+            _vk.CmdBindPipeline(commandBuffers[i], PipelineBindPoint.Graphics, _pipeline.GraphicsPipeline);
+            _vk.CmdDraw(commandBuffers[i], 3, 1, 0, 0);
+            _vk.CmdEndRenderPass(commandBuffers[i]);
+
+            if (_vk.EndCommandBuffer(commandBuffers[i]) != Result.Success)
+            {
+                throw new Exception("Failed to record command buffer.");
+            }
+        }
+
+        return commandBuffers;
+    }
+
     private void LogGraphicsDeviceInfo()
     {
         _vk.GetPhysicalDeviceProperties(_devices.PhysicalDevice, out PhysicalDeviceProperties properties);
@@ -191,6 +277,7 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         {
             if (disposing)
             {
+                _vk.DestroyCommandPool(_devices.LogicalDevice, _commandPool, null);
                 _pipeline.Dispose();
                 _swapChain.Dispose();
                 _devices.Dispose();
