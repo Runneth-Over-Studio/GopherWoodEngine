@@ -27,11 +27,11 @@ public class Engine : IDisposable
         _logger = _services.GetRequiredService<ILogger<Engine>>();
         _game = game;
 
-        IEventSystem eventSystem = _services.GetRequiredService<IEventSystem>();
-        eventSystem.Subscribe<WindowUpdateEventArgs>(OnUpdate);
-        eventSystem.Subscribe<WindowRenderEventArgs>(OnRender);
-        eventSystem.Subscribe<WindowResizeEventArgs>(OnResize);
-        eventSystem.Subscribe<WindowCloseEventArgs>(OnWindowClosing);
+        _graphicsDevice.HookWindowEvents(EventSystem);
+        EventSystem.Subscribe<WindowUpdateEventArgs>(OnUpdate);
+        EventSystem.Subscribe<WindowRenderEventArgs>(OnRender);
+        EventSystem.Subscribe<WindowResizeEventArgs>(OnResize);
+        EventSystem.Subscribe<WindowCloseEventArgs>(OnWindowClosing);
 
         _logger.LogDebug("Engine initialized.");
     }

@@ -47,15 +47,6 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         };
 
         _silkWindow = Window.Create(options);
-
-        _silkWindow.Load += () => eventSystem.Publish(this, new WindowLoadEventArgs());
-        _silkWindow.Update += (delta) => eventSystem.Publish(this, new WindowUpdateEventArgs(delta));
-        _silkWindow.Render += (delta) => eventSystem.Publish(this, new WindowRenderEventArgs(delta));
-        _silkWindow.Resize += (size) => eventSystem.Publish(this, new WindowResizeEventArgs(size.X, size.Y));
-        _silkWindow.FramebufferResize += (size) => eventSystem.Publish(this, new WindowFramebufferResizeEventArgs(size.X, size.Y));
-        _silkWindow.FocusChanged += (focused) => eventSystem.Publish(this, new WindowFocusChangedEventArgs(focused));
-        _silkWindow.Closing += () => eventSystem.Publish(this, new WindowCloseEventArgs());
-
         _silkWindow.Initialize();
 
         if (_silkWindow.VkSurface is null)
@@ -73,6 +64,17 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         _pipeline = new VulkanPipeline(_vk, _devices.LogicalDevice, _swapChain);
 
         LogGraphicsDeviceInfo();
+    }
+
+    public void HookWindowEvents(IEventSystem eventSystem)
+    {
+        _silkWindow.Load += () => eventSystem.Publish(this, new WindowLoadEventArgs());
+        _silkWindow.Update += (delta) => eventSystem.Publish(this, new WindowUpdateEventArgs(delta));
+        _silkWindow.Render += (delta) => eventSystem.Publish(this, new WindowRenderEventArgs(delta));
+        _silkWindow.Resize += (size) => eventSystem.Publish(this, new WindowResizeEventArgs(size.X, size.Y));
+        _silkWindow.FramebufferResize += (size) => eventSystem.Publish(this, new WindowFramebufferResizeEventArgs(size.X, size.Y));
+        _silkWindow.FocusChanged += (focused) => eventSystem.Publish(this, new WindowFocusChangedEventArgs(focused));
+        _silkWindow.Closing += () => eventSystem.Publish(this, new WindowCloseEventArgs());
     }
 
     public IInputContext GetWindowInputContext() => _silkWindow.CreateInput();
