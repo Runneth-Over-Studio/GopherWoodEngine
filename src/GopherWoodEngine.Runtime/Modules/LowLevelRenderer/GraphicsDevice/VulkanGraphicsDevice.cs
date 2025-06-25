@@ -165,7 +165,7 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         CommandPoolCreateInfo poolInfo = new()
         {
             SType = StructureType.CommandPoolCreateInfo,
-            QueueFamilyIndex = _devices.QueueFamilyIndices.GraphicsIndex!.Value
+            QueueFamilyIndex = _devices.QueueFamilyIndices.GraphicsIndex
         };
 
         if (_vk.CreateCommandPool(_devices.LogicalDevice, in poolInfo, null, out CommandPool commandPool) != Result.Success)
@@ -259,10 +259,10 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         _logger.LogDebug("... Device Type: {type}", properties.DeviceType);
         _logger.LogDebug("... GPU Driver Version: {v}", $"{driverMajor}.{driverMinor}.{driverPatch}");
         _logger.LogDebug("... Vulkan Version: {v}", $"{vulkanMajor}.{vulkanMinor}.{vulkanPatch}");
-        _logger.LogDebug("... Graphics Family Index: {i}", _devices.QueueFamilyIndices.GraphicsIndex?.ToString() ?? "<Not Found>");
-        _logger.LogDebug("... Compute Family Index: {i}", _devices.QueueFamilyIndices.ComputeIndex?.ToString() ?? "<Not Found>");
-        _logger.LogDebug("... Transfer Family Index: {i}", _devices.QueueFamilyIndices.TransferIndex?.ToString() ?? "<Not Found>");
-        _logger.LogDebug("... Present Family Index: {i}", _devices.QueueFamilyIndices.PresentIndex?.ToString() ?? "<Not Found>");
+        _logger.LogDebug("... Graphics Family Index: {i}", _devices.QueueFamilyIndices.GraphicsIndex.ToString() ?? "<Not Found>");
+        _logger.LogDebug("... Compute Family Index: {i}", _devices.QueueFamilyIndices.ComputeIndex.ToString() ?? "<Not Found>");
+        _logger.LogDebug("... Transfer Family Index: {i}", _devices.QueueFamilyIndices.TransferIndex.ToString() ?? "<Not Found>");
+        _logger.LogDebug("... Present Family Index: {i}", _devices.QueueFamilyIndices.PresentIndex.ToString() ?? "<Not Found>");
     }
 
     public void Dispose()

@@ -88,7 +88,7 @@ internal unsafe class VulkanSwapChain : IDisposable
         };
 
         QueueFamilyIndices indices = devices.QueueFamilyIndices;
-        uint* queueFamilyIndices = stackalloc[] { indices.GraphicsIndex!.Value, indices.PresentIndex!.Value };
+        uint* queueFamilyIndices = stackalloc[] { indices.GraphicsIndex, indices.PresentIndex };
 
         if (indices.GraphicsIndex != indices.PresentIndex)
         {

@@ -49,17 +49,13 @@ internal unsafe class VulkanDevices : IDisposable
         _vk = vk;
 
         (PhysicalDevice physicalDevice, QueueFamilyIndices indices) = SelectPhysicalDevice(instance, vk, surface);
-        if (indices.GraphicsIndex == null || indices.PresentIndex == null)
-        {
-            throw new Exception("Queue family indices are not complete. Ensure the physical device supports graphics and presentation queues.");
-        }
 
         PhysicalDevice = physicalDevice;
         QueueFamilyIndices = indices;
-        LogicalDevice = CreateLogicalDevice(vk, physicalDevice, indices.GraphicsIndex.Value, indices.PresentIndex.Value, surface, enableValidationLayers);
+        LogicalDevice = CreateLogicalDevice(vk, physicalDevice, indices.GraphicsIndex, indices.PresentIndex, surface, enableValidationLayers);
 
-        vk.GetDeviceQueue(LogicalDevice, indices.GraphicsIndex.Value, 0, out Queue graphicsQueue);
-        vk.GetDeviceQueue(LogicalDevice, indices.PresentIndex.Value, 0, out Queue presentQueue);
+        vk.GetDeviceQueue(LogicalDevice, indices.GraphicsIndex, 0, out Queue graphicsQueue);
+        vk.GetDeviceQueue(LogicalDevice, indices.PresentIndex, 0, out Queue presentQueue);
         GraphicsQueue = graphicsQueue;
         PresentQueue = presentQueue;
     }
@@ -128,7 +124,11 @@ internal unsafe class VulkanDevices : IDisposable
 
     private static QueueFamilyIndices FindQueueFamilies(Vk vk, PhysicalDevice physicalDevice, VulkanSurface surface)
     {
-        QueueFamilyIndices queueFamilyIndices = new();
+        
+        uint? graphicsIndex = null;
+        uint? presentIndex = null;
+        uint? computeIndex = null;
+        uint? transferIndex = null;
 
         uint queueFamilityCount = 0;
         vk.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, ref queueFamilityCount, null);
@@ -143,34 +143,45 @@ internal unsafe class VulkanDevices : IDisposable
         HashSet<uint> usedIndices = [];
         foreach (QueueFamilyProperties queueFamily in queueFamilies)
         {
-            if (queueFamilyIndices.GraphicsIndex == null && queueFamily.QueueFlags.HasFlag(QueueFlags.GraphicsBit))
+            if (graphicsIndex == null && queueFamily.QueueFlags.HasFlag(QueueFlags.GraphicsBit))
             {
-                queueFamilyIndices.GraphicsIndex = i;
+                graphicsIndex = i;
                 usedIndices.Add(i);
             }
 
-            if ((queueFamilyIndices.ComputeIndex == null || !usedIndices.Contains(i)) && queueFamily.QueueFlags.HasFlag(QueueFlags.ComputeBit))
+            if ((computeIndex == null || !usedIndices.Contains(i)) && queueFamily.QueueFlags.HasFlag(QueueFlags.ComputeBit))
             {
-                queueFamilyIndices.ComputeIndex = i;
+                computeIndex = i;
                 usedIndices.Add(i);
             }
 
-            if ((queueFamilyIndices.PresentIndex == null || !usedIndices.Contains(i)) && surface.PresentIsSupported(physicalDevice, i))
+            if ((presentIndex == null || !usedIndices.Contains(i)) && surface.PresentIsSupported(physicalDevice, i))
             {
-                queueFamilyIndices.PresentIndex = i;
+                presentIndex = i;
                 usedIndices.Add(i);
             }
 
-            if ((queueFamilyIndices.TransferIndex == null || !usedIndices.Contains(i)) && queueFamily.QueueFlags.HasFlag(QueueFlags.TransferBit))
+            if ((transferIndex == null || !usedIndices.Contains(i)) && queueFamily.QueueFlags.HasFlag(QueueFlags.TransferBit))
             {
-                queueFamilyIndices.TransferIndex = i;
+                transferIndex = i;
                 usedIndices.Add(i);
             }
 
             i++;
         }
 
-        return queueFamilyIndices;
+        if (graphicsIndex == null || presentIndex == null || computeIndex == null || transferIndex == null)
+        {
+            throw new Exception("Failed to find required queue families.");
+        }
+
+        return new QueueFamilyIndices()
+        {
+            GraphicsIndex = graphicsIndex.Value,
+            PresentIndex = presentIndex.Value,
+            ComputeIndex = computeIndex.Value,
+            TransferIndex = transferIndex.Value
+        };
     }
 
     private static Device CreateLogicalDevice(Vk vk, PhysicalDevice physicalDevice, uint graphicsIndex, uint presentIndex, VulkanSurface surface, bool enableValidationLayers)
@@ -251,10 +262,8 @@ internal unsafe class VulkanDevices : IDisposable
 
 internal struct QueueFamilyIndices
 {
-    public uint? GraphicsIndex { get; set; }
-    public uint? PresentIndex { get; set; }
-    public uint? ComputeIndex { get; set; }
-    public uint? TransferIndex { get; set; }
-
-    public readonly bool IsComplete => GraphicsIndex != null && PresentIndex != null;
+    public uint GraphicsIndex { get; set; }
+    public uint PresentIndex { get; set; }
+    public uint ComputeIndex { get; set; }
+    public uint TransferIndex { get; set; }
 }
