@@ -22,7 +22,7 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
     private const int MAX_FRAMES_IN_FLIGHT = 2;
 
     private readonly ILogger<IGraphicsDevice> _logger;
-    private readonly IWindow _silkWindow;
+    private readonly IWindow _window;
     private readonly Vk _vk;
     private readonly Instance _instance;
     private readonly VulkanDebugger? _debugger;
@@ -44,31 +44,14 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
     {
         EnableValidationLayers();
 
-        WindowOptions options = WindowOptions.DefaultVulkan with
-        {
-            Title = engineConfig.Title,
-            Size = new Vector2D<int>(engineConfig.Width, engineConfig.Height),
-            API = GraphicsAPI.DefaultVulkan with
-            {
-                Version = new APIVersion(Convert.ToInt32(VK_VERSION_MAJOR), Convert.ToInt32(VK_VERSION_MINOR))
-            }
-        };
-
-        _silkWindow = Window.Create(options);
-        _silkWindow.Initialize();
-
-        if (_silkWindow.VkSurface is null)
-        {
-            throw new PlatformNotSupportedException("Windowing platform doesn't support Vulkan.");
-        }
-
         _logger = logger;
+        _window = CreateWindow(engineConfig);
         _vk = Vk.GetApi();
         _instance = CreateInstance(engineConfig);
-        _debugger = !_enableValidationLayers ? null : new VulkanDebugger(_instance, _vk, _logger);
-        _surface = new VulkanSurface(_silkWindow, _instance, _vk);
+        _debugger = _enableValidationLayers ? new VulkanDebugger(_instance, _vk, _logger) : null;
+        _surface = new VulkanSurface(_window, _instance, _vk);
         _devices = new VulkanDevices(_instance, _vk, _surface, _enableValidationLayers);
-        _swapChain = new VulkanSwapChain(_instance, _vk, _surface, _devices, _silkWindow.FramebufferSize);
+        _swapChain = new VulkanSwapChain(_instance, _vk, _surface, _devices, _window.FramebufferSize);
         _pipeline = new VulkanPipeline(_vk, _devices.LogicalDevice, _swapChain);
         _commandPool = CreateCommandPool();
         _commandBuffers = CreateCommandBuffers();
@@ -84,25 +67,48 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
 
     public void HookWindowEvents(IEventSystem eventSystem)
     {
-        _silkWindow.Load += () => eventSystem.Publish(this, new WindowLoadEventArgs());
-        _silkWindow.Update += (delta) => eventSystem.Publish(this, new WindowUpdateEventArgs(delta));
-        _silkWindow.Render += (delta) => eventSystem.Publish(this, new WindowRenderEventArgs(delta));
-        _silkWindow.Resize += (size) => eventSystem.Publish(this, new WindowResizeEventArgs(size.X, size.Y));
-        _silkWindow.FramebufferResize += (size) => eventSystem.Publish(this, new WindowFramebufferResizeEventArgs(size.X, size.Y));
-        _silkWindow.FocusChanged += (focused) => eventSystem.Publish(this, new WindowFocusChangedEventArgs(focused));
-        _silkWindow.Closing += () => eventSystem.Publish(this, new WindowCloseEventArgs());
+        _window.Load += () => eventSystem.Publish(this, new WindowLoadEventArgs());
+        _window.Update += (delta) => eventSystem.Publish(this, new WindowUpdateEventArgs(delta));
+        _window.Render += (delta) => eventSystem.Publish(this, new WindowRenderEventArgs(delta));
+        _window.Resize += (size) => eventSystem.Publish(this, new WindowResizeEventArgs(size.X, size.Y));
+        _window.FramebufferResize += (size) => eventSystem.Publish(this, new WindowFramebufferResizeEventArgs(size.X, size.Y));
+        _window.FocusChanged += (focused) => eventSystem.Publish(this, new WindowFocusChangedEventArgs(focused));
+        _window.Closing += () => eventSystem.Publish(this, new WindowCloseEventArgs());
     }
 
-    public IInputContext GetWindowInputContext() => _silkWindow.CreateInput();
+    public IInputContext GetWindowInputContext() => _window.CreateInput();
 
     public void InitiateWindowMessageLoop()
     {
-        _silkWindow.Render += DrawFrame;
-        _silkWindow.Run();
+        _window.Render += DrawFrame;
+        _window.Run();
         _vk.DeviceWaitIdle(_devices.LogicalDevice);
     }
 
-    public void Shutdown() => _silkWindow.Close();
+    public void Shutdown() => _window.Close();
+
+    private static IWindow CreateWindow(EngineConfig engineConfig)
+    {
+        WindowOptions options = WindowOptions.DefaultVulkan with
+        {
+            Title = engineConfig.Title,
+            Size = new Vector2D<int>(engineConfig.Width, engineConfig.Height),
+            API = GraphicsAPI.DefaultVulkan with
+            {
+                Version = new APIVersion(Convert.ToInt32(VK_VERSION_MAJOR), Convert.ToInt32(VK_VERSION_MINOR))
+            }
+        };
+
+        IWindow window = Window.Create(options);
+        window.Initialize();
+
+        if (window.VkSurface is null)
+        {
+            throw new PlatformNotSupportedException("Windowing platform doesn't support Vulkan.");
+        }
+
+        return window;
+    }
 
     private Instance CreateInstance(EngineConfig engineConfig)
     {
@@ -124,7 +130,7 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
 
         try
         {
-            byte** glfwExtensions = _silkWindow.VkSurface!.GetRequiredExtensions(out uint glfwExtensionCount);
+            byte** glfwExtensions = _window.VkSurface!.GetRequiredExtensions(out uint glfwExtensionCount);
             string[] extensions = SilkMarshal.PtrToStringArray((nint)glfwExtensions, (int)glfwExtensionCount);
             if (_enableValidationLayers)
             {
@@ -285,39 +291,30 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
 
     private void DrawFrame(double delta)
     {
-        _vk.WaitForFences(_devices.LogicalDevice, 1, in _inFlightFences![_currentFrame], true, ulong.MaxValue);
+        _vk.WaitForFences(_devices.LogicalDevice, 1, in _inFlightFences![_currentFrame], Vk.True, ulong.MaxValue);
 
         uint imageIndex = 0;
-        _swapChain.KhrSwapChain.AcquireNextImage(_devices.LogicalDevice, _swapChain.SwapChain, ulong.MaxValue, _imageAvailableSemaphores![_currentFrame], default, ref imageIndex);
+        _swapChain.KhrSwapChain.AcquireNextImage(_devices.LogicalDevice, _swapChain.SwapChain, ulong.MaxValue, _imageAvailableSemaphores[_currentFrame], default, ref imageIndex);
 
         if (_imagesInFlight![imageIndex].Handle != default)
         {
-            _vk.WaitForFences(_devices.LogicalDevice, 1, in _imagesInFlight[imageIndex], true, ulong.MaxValue);
+            _vk.WaitForFences(_devices.LogicalDevice, 1, in _imagesInFlight[imageIndex], Vk.True, ulong.MaxValue);
         }
         _imagesInFlight[imageIndex] = _inFlightFences[_currentFrame];
 
-        SubmitInfo submitInfo = new()
-        {
-            SType = StructureType.SubmitInfo
-        };
-
         Semaphore* waitSemaphores = stackalloc[] { _imageAvailableSemaphores[_currentFrame] };
         PipelineStageFlags* waitStages = stackalloc[] { PipelineStageFlags.ColorAttachmentOutputBit };
-
+        Semaphore* signalSemaphores = stackalloc[] { _renderFinishedSemaphores[_currentFrame] };
         CommandBuffer buffer = _commandBuffers[imageIndex];
 
-        submitInfo = submitInfo with
+        SubmitInfo submitInfo = new()
         {
+            SType = StructureType.SubmitInfo,
             WaitSemaphoreCount = 1,
             PWaitSemaphores = waitSemaphores,
             PWaitDstStageMask = waitStages,
             CommandBufferCount = 1,
-            PCommandBuffers = &buffer
-        };
-
-        Semaphore* signalSemaphores = stackalloc[] { _renderFinishedSemaphores[_currentFrame] };
-        submitInfo = submitInfo with
-        {
+            PCommandBuffers = &buffer,
             SignalSemaphoreCount = 1,
             PSignalSemaphores = signalSemaphores
         };
@@ -395,7 +392,7 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
                 _debugger?.Dispose();
                 _vk.DestroyInstance(_instance, null);
                 _vk.Dispose();
-                _silkWindow.Dispose();
+                _window.Dispose();
             }
 
             _disposed = true;

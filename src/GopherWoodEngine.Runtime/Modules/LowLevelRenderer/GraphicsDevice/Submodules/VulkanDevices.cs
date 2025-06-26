@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
-using Silk.NET.Core.Native;
+﻿using Silk.NET.Core.Native;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 using System;
@@ -124,7 +123,6 @@ internal unsafe class VulkanDevices : IDisposable
 
     private static QueueFamilyIndices FindQueueFamilies(Vk vk, PhysicalDevice physicalDevice, VulkanSurface surface)
     {
-        
         uint? graphicsIndex = null;
         uint? presentIndex = null;
         uint? computeIndex = null;
