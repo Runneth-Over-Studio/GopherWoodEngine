@@ -11,18 +11,18 @@ internal unsafe class VulkanSurface : IDisposable
     /// <summary>
     /// Represents an abstract type of surface to present rendered images to.
     /// </summary>
-    internal SurfaceKHR SurfaceKHR { get; }
+    internal SurfaceKHR SurfaceKHR { get { return _surfaceKHR; } }
 
     private readonly KhrSurface _khrSurface;
+    private readonly SurfaceKHR _surfaceKHR;
     private readonly Instance _instance;
     private bool _disposed = false;
 
-    public VulkanSurface(IWindow window, Instance instance, Vk vk)
+    public VulkanSurface(IWindow window, Vk vk, Instance instance)
     {
         _instance = instance;
-
         _khrSurface = CreateSurfaceExtension(vk, instance);
-        SurfaceKHR = CreateAbstractSurface(window, instance);
+        _surfaceKHR = CreateAbstractSurface(window, instance);
     }
 
     /// <summary>
@@ -30,7 +30,7 @@ internal unsafe class VulkanSurface : IDisposable
     /// </summary>
     internal bool PresentIsSupported(PhysicalDevice physicalDevice, uint queueFamilyIndex)
     {
-        _khrSurface.GetPhysicalDeviceSurfaceSupport(physicalDevice, queueFamilyIndex, SurfaceKHR, out Bool32 presentSupport);
+        _khrSurface.GetPhysicalDeviceSurfaceSupport(physicalDevice, queueFamilyIndex, _surfaceKHR, out Bool32 presentSupport);
 
         return presentSupport;
     }
@@ -42,11 +42,11 @@ internal unsafe class VulkanSurface : IDisposable
     internal SwapChainSupport GetSwapChainSupport(PhysicalDevice physicalDevice)
     {
         // Basic surface capabilities.
-        _khrSurface.GetPhysicalDeviceSurfaceCapabilities(physicalDevice, SurfaceKHR, out SurfaceCapabilitiesKHR capabilities);
+        _khrSurface.GetPhysicalDeviceSurfaceCapabilities(physicalDevice, _surfaceKHR, out SurfaceCapabilitiesKHR capabilities);
 
         // Surface formats.
         uint formatCount = 0;
-        _khrSurface.GetPhysicalDeviceSurfaceFormats(physicalDevice, SurfaceKHR, ref formatCount, null);
+        _khrSurface.GetPhysicalDeviceSurfaceFormats(physicalDevice, _surfaceKHR, ref formatCount, null);
 
         SurfaceFormatKHR[] formats;
         if (formatCount != 0)
@@ -54,7 +54,7 @@ internal unsafe class VulkanSurface : IDisposable
             formats = new SurfaceFormatKHR[formatCount];
             fixed (SurfaceFormatKHR* formatsPtr = formats)
             {
-                _khrSurface.GetPhysicalDeviceSurfaceFormats(physicalDevice, SurfaceKHR, ref formatCount, formatsPtr);
+                _khrSurface.GetPhysicalDeviceSurfaceFormats(physicalDevice, _surfaceKHR, ref formatCount, formatsPtr);
             }
         }
         else
@@ -64,7 +64,7 @@ internal unsafe class VulkanSurface : IDisposable
 
         // Available presentation modes.
         uint presentModeCount = 0;
-        _khrSurface.GetPhysicalDeviceSurfacePresentModes(physicalDevice, SurfaceKHR, ref presentModeCount, null);
+        _khrSurface.GetPhysicalDeviceSurfacePresentModes(physicalDevice, _surfaceKHR, ref presentModeCount, null);
 
         PresentModeKHR[] presentModes;
         if (presentModeCount != 0)
@@ -72,7 +72,7 @@ internal unsafe class VulkanSurface : IDisposable
             presentModes = new PresentModeKHR[presentModeCount];
             fixed (PresentModeKHR* formatsPtr = presentModes)
             {
-                _khrSurface.GetPhysicalDeviceSurfacePresentModes(physicalDevice, SurfaceKHR, ref presentModeCount, formatsPtr);
+                _khrSurface.GetPhysicalDeviceSurfacePresentModes(physicalDevice, _surfaceKHR, ref presentModeCount, formatsPtr);
             }
         }
         else
@@ -117,7 +117,7 @@ internal unsafe class VulkanSurface : IDisposable
         {
             if (disposing)
             {
-                _khrSurface!.DestroySurface(_instance, SurfaceKHR, null);
+                _khrSurface!.DestroySurface(_instance, _surfaceKHR, null);
             }
 
             _disposed = true;

@@ -7,7 +7,7 @@ public interface IGraphicsDevice : IDisposable
 {
     void HookWindowEvents(IEventSystem eventSystem);
 
-    IInputContext GetWindowInputContext();
+    IInputContext CreateWindowInputContext();
 
     void InitiateWindowMessageLoop();
 

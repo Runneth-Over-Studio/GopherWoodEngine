@@ -43,7 +43,7 @@ internal unsafe class VulkanDevices : IDisposable
     private readonly Vk _vk;
     private bool _disposed = false;
 
-    public VulkanDevices(Instance instance, Vk vk, VulkanSurface surface, bool enableValidationLayers)
+    public VulkanDevices(Vk vk, Instance instance, VulkanSurface surface, bool enableValidationLayers)
     {
         _vk = vk;
 

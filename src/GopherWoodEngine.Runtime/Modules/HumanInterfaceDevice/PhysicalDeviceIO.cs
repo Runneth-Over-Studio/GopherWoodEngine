@@ -10,7 +10,7 @@ internal class PhysicalDeviceIO : IPhysicalDeviceIO
 
     public PhysicalDeviceIO(IGraphicsDevice graphicsDevice, IEventSystem eventSystem)
     {
-        InputContext = graphicsDevice.GetWindowInputContext();
+        InputContext = graphicsDevice.CreateWindowInputContext();
 
         InputContext.ConnectionChanged += (device, connected) => eventSystem.Publish(this, new InputDeviceConnectionChangedEventArgs(device, connected));
         HookGamepadEvents(InputContext.Gamepads, eventSystem);

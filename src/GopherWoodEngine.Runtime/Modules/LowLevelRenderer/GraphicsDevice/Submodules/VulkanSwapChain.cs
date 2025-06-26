@@ -40,7 +40,7 @@ internal unsafe class VulkanSwapChain : IDisposable
     
     private bool _disposed = false;
 
-    public VulkanSwapChain(Instance instance, Vk vk, VulkanSurface surface, VulkanDevices devices, Vector2D<int> framebufferSize)
+    public VulkanSwapChain(Vk vk, Instance instance, VulkanSurface surface, VulkanDevices devices, Vector2D<int> framebufferSize)
     {
         _vk = vk;
         _logicalDevice = devices.LogicalDevice;

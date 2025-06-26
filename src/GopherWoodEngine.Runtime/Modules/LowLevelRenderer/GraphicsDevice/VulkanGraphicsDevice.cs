@@ -19,24 +19,13 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
 {
     private const uint VK_VERSION_MAJOR = 1;
     private const uint VK_VERSION_MINOR = 3;
-    private const int MAX_FRAMES_IN_FLIGHT = 2;
 
     private readonly ILogger<IGraphicsDevice> _logger;
     private readonly IWindow _window;
     private readonly Vk _vk;
     private readonly Instance _instance;
     private readonly VulkanDebugger? _debugger;
-    private readonly VulkanSurface _surface;
-    private readonly VulkanDevices _devices;
-    private readonly VulkanSwapChain _swapChain;
-    private readonly VulkanPipeline _pipeline;
-    private readonly CommandPool _commandPool;
-    private readonly CommandBuffer[] _commandBuffers;
-    private readonly Semaphore[] _imageAvailableSemaphores;
-    private readonly Semaphore[] _renderFinishedSemaphores;
-    private readonly Fence[] _inFlightFences;
-    private readonly Fence[] _imagesInFlight;
-    private int _currentFrame = 0;
+    private readonly VulkanPresenter _presenter;
     private bool _enableValidationLayers = false;
     private bool _disposed = false;
 
@@ -49,18 +38,7 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         _vk = Vk.GetApi();
         _instance = CreateInstance(engineConfig);
         _debugger = _enableValidationLayers ? new VulkanDebugger(_instance, _vk, _logger) : null;
-        _surface = new VulkanSurface(_window, _instance, _vk);
-        _devices = new VulkanDevices(_instance, _vk, _surface, _enableValidationLayers);
-        _swapChain = new VulkanSwapChain(_instance, _vk, _surface, _devices, _window.FramebufferSize);
-        _pipeline = new VulkanPipeline(_vk, _devices.LogicalDevice, _swapChain);
-        _commandPool = CreateCommandPool();
-        _commandBuffers = CreateCommandBuffers();
-        _imageAvailableSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];
-        _renderFinishedSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];
-        _inFlightFences = new Fence[MAX_FRAMES_IN_FLIGHT];
-        _imagesInFlight = new Fence[_swapChain.Images.Length];
-
-        SetSyncObjects();
+        _presenter = new VulkanPresenter(_window, _vk, _instance, _enableValidationLayers);
 
         LogGraphicsDeviceInfo();
     }
@@ -76,13 +54,16 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         _window.Closing += () => eventSystem.Publish(this, new WindowCloseEventArgs());
     }
 
-    public IInputContext GetWindowInputContext() => _window.CreateInput();
+    public IInputContext CreateWindowInputContext() => _window.CreateInput();
 
     public void InitiateWindowMessageLoop()
     {
-        _window.Render += DrawFrame;
+        _window.Render += _presenter.DrawFrame;
+
         _window.Run();
-        _vk.DeviceWaitIdle(_devices.LogicalDevice);
+
+        _window.Render -= _presenter.DrawFrame;
+        _vk.DeviceWaitIdle(_presenter.Devices.LogicalDevice);
     }
 
     public void Shutdown() => _window.Close();
@@ -183,168 +164,9 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         return vulkanInstance.Value;
     }
 
-    private CommandPool CreateCommandPool()
-    {
-        CommandPoolCreateInfo poolInfo = new()
-        {
-            SType = StructureType.CommandPoolCreateInfo,
-            QueueFamilyIndex = _devices.QueueFamilyIndices.GraphicsIndex
-        };
-
-        if (_vk.CreateCommandPool(_devices.LogicalDevice, in poolInfo, null, out CommandPool commandPool) != Result.Success)
-        {
-            throw new Exception("Failed to create command pool.");
-        }
-
-        return commandPool;
-    }
-
-    private CommandBuffer[] CreateCommandBuffers()
-    {
-        CommandBuffer[] commandBuffers = new CommandBuffer[_pipeline.Framebuffers.Length];
-
-        CommandBufferAllocateInfo allocInfo = new()
-        {
-            SType = StructureType.CommandBufferAllocateInfo,
-            CommandPool = _commandPool,
-            Level = CommandBufferLevel.Primary,
-            CommandBufferCount = (uint)commandBuffers.Length
-        };
-
-        fixed (CommandBuffer* commandBuffersPtr = commandBuffers)
-        {
-            if (_vk.AllocateCommandBuffers(_devices.LogicalDevice, in allocInfo, commandBuffersPtr) != Result.Success)
-            {
-                throw new Exception("Failed to allocate command buffers.");
-            }
-        }
-
-        for (int i = 0; i < commandBuffers.Length; i++)
-        {
-            CommandBufferBeginInfo beginInfo = new()
-            {
-                SType = StructureType.CommandBufferBeginInfo
-            };
-
-            if (_vk.BeginCommandBuffer(commandBuffers[i], in beginInfo) != Result.Success)
-            {
-                throw new Exception("Failed to begin recording command buffer.");
-            }
-
-            RenderPassBeginInfo renderPassInfo = new()
-            {
-                SType = StructureType.RenderPassBeginInfo,
-                RenderPass = _pipeline.RenderPass,
-                Framebuffer = _pipeline.Framebuffers[i],
-                RenderArea =
-                {
-                    Offset = { X = 0, Y = 0 },
-                    Extent = _swapChain.Extent
-                }
-            };
-
-            ClearValue clearColor = new()
-            {
-                Color = new() { Float32_0 = 0, Float32_1 = 0, Float32_2 = 0, Float32_3 = 1 }
-            };
-
-            renderPassInfo.ClearValueCount = 1;
-            renderPassInfo.PClearValues = &clearColor;
-
-            _vk.CmdBeginRenderPass(commandBuffers[i], &renderPassInfo, SubpassContents.Inline);
-            _vk.CmdBindPipeline(commandBuffers[i], PipelineBindPoint.Graphics, _pipeline.GraphicsPipeline);
-            _vk.CmdDraw(commandBuffers[i], 3, 1, 0, 0);
-            _vk.CmdEndRenderPass(commandBuffers[i]);
-
-            if (_vk.EndCommandBuffer(commandBuffers[i]) != Result.Success)
-            {
-                throw new Exception("Failed to record command buffer.");
-            }
-        }
-
-        return commandBuffers;
-    }
-
-    private void SetSyncObjects()
-    {
-        SemaphoreCreateInfo semaphoreInfo = new()
-        {
-            SType = StructureType.SemaphoreCreateInfo
-        };
-
-        FenceCreateInfo fenceInfo = new()
-        {
-            SType = StructureType.FenceCreateInfo,
-            Flags = FenceCreateFlags.SignaledBit
-        };
-
-        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-        {
-            if (_vk.CreateSemaphore(_devices.LogicalDevice, in semaphoreInfo, null, out _imageAvailableSemaphores[i]) != Result.Success ||
-                _vk.CreateSemaphore(_devices.LogicalDevice, in semaphoreInfo, null, out _renderFinishedSemaphores[i]) != Result.Success ||
-                _vk.CreateFence(_devices.LogicalDevice, in fenceInfo, null, out _inFlightFences[i]) != Result.Success)
-            {
-                throw new Exception("Failed to create synchronization objects for a frame.");
-            }
-        }
-    }
-
-    private void DrawFrame(double delta)
-    {
-        _vk.WaitForFences(_devices.LogicalDevice, 1, in _inFlightFences![_currentFrame], Vk.True, ulong.MaxValue);
-
-        uint imageIndex = 0;
-        _swapChain.KhrSwapChain.AcquireNextImage(_devices.LogicalDevice, _swapChain.SwapChain, ulong.MaxValue, _imageAvailableSemaphores[_currentFrame], default, ref imageIndex);
-
-        if (_imagesInFlight![imageIndex].Handle != default)
-        {
-            _vk.WaitForFences(_devices.LogicalDevice, 1, in _imagesInFlight[imageIndex], Vk.True, ulong.MaxValue);
-        }
-        _imagesInFlight[imageIndex] = _inFlightFences[_currentFrame];
-
-        Semaphore* waitSemaphores = stackalloc[] { _imageAvailableSemaphores[_currentFrame] };
-        PipelineStageFlags* waitStages = stackalloc[] { PipelineStageFlags.ColorAttachmentOutputBit };
-        Semaphore* signalSemaphores = stackalloc[] { _renderFinishedSemaphores[_currentFrame] };
-        CommandBuffer buffer = _commandBuffers[imageIndex];
-
-        SubmitInfo submitInfo = new()
-        {
-            SType = StructureType.SubmitInfo,
-            WaitSemaphoreCount = 1,
-            PWaitSemaphores = waitSemaphores,
-            PWaitDstStageMask = waitStages,
-            CommandBufferCount = 1,
-            PCommandBuffers = &buffer,
-            SignalSemaphoreCount = 1,
-            PSignalSemaphores = signalSemaphores
-        };
-
-        _vk.ResetFences(_devices.LogicalDevice, 1, in _inFlightFences[_currentFrame]);
-
-        if (_vk.QueueSubmit(_devices.GraphicsQueue, 1, in submitInfo, _inFlightFences[_currentFrame]) != Result.Success)
-        {
-            throw new Exception("Failed to submit draw command buffer.");
-        }
-
-        SwapchainKHR* swapChains = stackalloc[] { _swapChain.SwapChain };
-        PresentInfoKHR presentInfo = new()
-        {
-            SType = StructureType.PresentInfoKhr,
-            WaitSemaphoreCount = 1,
-            PWaitSemaphores = signalSemaphores,
-            SwapchainCount = 1,
-            PSwapchains = swapChains,
-            PImageIndices = &imageIndex
-        };
-
-        _swapChain.KhrSwapChain.QueuePresent(_devices.PresentQueue, in presentInfo);
-
-        _currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-    }
-
     private void LogGraphicsDeviceInfo()
     {
-        _vk.GetPhysicalDeviceProperties(_devices.PhysicalDevice, out PhysicalDeviceProperties properties);
+        _vk.GetPhysicalDeviceProperties(_presenter.Devices.PhysicalDevice, out PhysicalDeviceProperties properties);
 
         int driverMajor = (int)((properties.DriverVersion >> 22) & 0x3FF);
         int driverMinor = (int)((properties.DriverVersion >> 12) & 0x3FF);
@@ -359,10 +181,10 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         _logger.LogDebug("... Device Type: {type}", properties.DeviceType);
         _logger.LogDebug("... GPU Driver Version: {v}", $"{driverMajor}.{driverMinor}.{driverPatch}");
         _logger.LogDebug("... Vulkan Version: {v}", $"{vulkanMajor}.{vulkanMinor}.{vulkanPatch}");
-        _logger.LogDebug("... Graphics Family Index: {i}", _devices.QueueFamilyIndices.GraphicsIndex.ToString() ?? "<Not Found>");
-        _logger.LogDebug("... Compute Family Index: {i}", _devices.QueueFamilyIndices.ComputeIndex.ToString() ?? "<Not Found>");
-        _logger.LogDebug("... Transfer Family Index: {i}", _devices.QueueFamilyIndices.TransferIndex.ToString() ?? "<Not Found>");
-        _logger.LogDebug("... Present Family Index: {i}", _devices.QueueFamilyIndices.PresentIndex.ToString() ?? "<Not Found>");
+        _logger.LogDebug("... Graphics Family Index: {i}", _presenter.Devices.QueueFamilyIndices.GraphicsIndex.ToString() ?? "<Not Found>");
+        _logger.LogDebug("... Compute Family Index: {i}", _presenter.Devices.QueueFamilyIndices.ComputeIndex.ToString() ?? "<Not Found>");
+        _logger.LogDebug("... Transfer Family Index: {i}", _presenter.Devices.QueueFamilyIndices.TransferIndex.ToString() ?? "<Not Found>");
+        _logger.LogDebug("... Present Family Index: {i}", _presenter.Devices.QueueFamilyIndices.PresentIndex.ToString() ?? "<Not Found>");
     }
 
     public void Dispose()
@@ -377,18 +199,7 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         {
             if (disposing)
             {
-                for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-                {
-                    _vk.DestroySemaphore(_devices.LogicalDevice, _renderFinishedSemaphores![i], null);
-                    _vk.DestroySemaphore(_devices.LogicalDevice, _imageAvailableSemaphores![i], null);
-                    _vk.DestroyFence(_devices.LogicalDevice, _inFlightFences![i], null);
-                }
-
-                _vk.DestroyCommandPool(_devices.LogicalDevice, _commandPool, null);
-                _pipeline.Dispose();
-                _swapChain.Dispose();
-                _devices.Dispose();
-                _surface.Dispose();
+                _presenter.Dispose();
                 _debugger?.Dispose();
                 _vk.DestroyInstance(_instance, null);
                 _vk.Dispose();
