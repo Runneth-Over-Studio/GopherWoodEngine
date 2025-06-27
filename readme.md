@@ -13,7 +13,7 @@ In general, development is following [Game Engine Architecture](https://www.tayl
 ## Build Requirements
 - The runtime requires the [Vulkan SDK](https://www.lunarg.com/vulkan-sdk/) to build/run. The SDK provides the Vulkan validation layers as well as the command line tools to compile the shaders. 
 
-- You will have to update your csproj files to point the folder where glslc.exe is found (this is the glsl compiler)
+- You will have to update your csproj file to point to the folder where the 'glslc' compiler is found.
 
 ```xml
 	<PropertyGroup>
