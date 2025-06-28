@@ -1,6 +1,6 @@
 ﻿using GopherWoodEngine.Runtime.Modules;
 using Microsoft.Extensions.Logging;
-using Moq;
+using NSubstitute;
 
 namespace Tests.Runtime;
 
@@ -14,8 +14,8 @@ public sealed class EventSystemTests
     public void Publish_SubscribedHandlerInvokes_HandlerCalledWithCorrectData()
     {
         // Arrange
-        Mock<ILogger<IEventSystem>> loggerMock = new Mock<ILogger<IEventSystem>>();
-        IEventSystem eventSystem = new EventSystem(loggerMock.Object);
+        ILogger<IEventSystem> loggerMock = Substitute.For<ILogger<IEventSystem>>();
+        IEventSystem eventSystem = new EventSystem(loggerMock);
         bool handlerCalled = false;
         int receivedValue = 0;
         TestEventArgs eventArgs = new() { Value = 2024 };
