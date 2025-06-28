@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Logging;
 using Moq;
 
-namespace GopherWoodEngine.Tests.Runtime;
+namespace Tests.Runtime;
 
 [TestClass]
 public sealed class EventSystemTests

@@ -1,6 +1,6 @@
 ﻿using GopherWoodEngine.Runtime;
 
-namespace GopherWoodEngine.TestBed;
+namespace TestBed;
 
 internal class TestBedGame(EngineConfig engineConfig) : Game(engineConfig)
 {

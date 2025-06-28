@@ -5,9 +5,11 @@ VisualStudioVersion = 17.14.36127.28
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GopherWoodEngine.Runtime", "GopherWoodEngine.Runtime\GopherWoodEngine.Runtime.csproj", "{C378B441-D5B7-4763-B289-DE15CA834A8A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GopherWoodEngine.TestBed", "GopherWoodEngine.TestBed\GopherWoodEngine.TestBed.csproj", "{08DBAC51-DB15-4F6B-992E-96EE0915054F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestBed", "TestBed\TestBed.csproj", "{08DBAC51-DB15-4F6B-992E-96EE0915054F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GopherWoodEngine.Tests", "GopherWoodEngine.Tests\GopherWoodEngine.Tests.csproj", "{3566755F-B8F1-4A90-8FEA-B524A46634BA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{3566755F-B8F1-4A90-8FEA-B524A46634BA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Build", "Build\build\Build.csproj", "{E83E5251-5EC1-4827-A099-842A7ACB31A8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +29,10 @@ Global
 		{3566755F-B8F1-4A90-8FEA-B524A46634BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3566755F-B8F1-4A90-8FEA-B524A46634BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3566755F-B8F1-4A90-8FEA-B524A46634BA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E83E5251-5EC1-4827-A099-842A7ACB31A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E83E5251-5EC1-4827-A099-842A7ACB31A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E83E5251-5EC1-4827-A099-842A7ACB31A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E83E5251-5EC1-4827-A099-842A7ACB31A8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,7 +1,7 @@
 ﻿using ArchUnitNET.Domain;
 using ArchUnitNET.Loader;
 
-namespace GopherWoodEngine.Tests.Runtime;
+namespace Tests.Runtime;
 
 public class ArchitectureTests
 {

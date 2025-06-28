@@ -1,7 +1,7 @@
 ﻿using GopherWoodEngine.Runtime;
 using System;
 
-namespace GopherWoodEngine.TestBed;
+namespace TestBed;
 
 internal class Program
 {
