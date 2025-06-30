@@ -8,9 +8,7 @@ namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submo
 
 internal unsafe class VulkanSurface : IDisposable
 {
-    /// <summary>
-    /// Represents an abstract type of surface to present rendered images to.
-    /// </summary>
+    // Represents an abstract type of surface to present rendered images to.
     internal SurfaceKHR SurfaceKHR { get { return _surfaceKHR; } }
 
     private readonly KhrSurface _khrSurface;
@@ -25,9 +23,7 @@ internal unsafe class VulkanSurface : IDisposable
         _surfaceKHR = CreateAbstractSurface(window, instance);
     }
 
-    /// <summary>
-    /// Determine whether queue family has the capability of presenting to our window surface.
-    /// </summary>
+    // Determine whether queue family has the capability of presenting to our window surface.
     internal bool PresentIsSupported(PhysicalDevice physicalDevice, uint queueFamilyIndex)
     {
         _khrSurface.GetPhysicalDeviceSurfaceSupport(physicalDevice, queueFamilyIndex, _surfaceKHR, out Bool32 presentSupport);
@@ -35,10 +31,8 @@ internal unsafe class VulkanSurface : IDisposable
         return presentSupport;
     }
 
-    /// <summary>
-    /// Return basic surface capabilities (min/max number of images in swap chain, min/max width and height of images),
-    /// surface formats (pixel format, color space), and available presentation modes.
-    /// </summary>
+    // Return basic surface capabilities (min/max number of images in swap chain, min/max width and height of images),
+    // surface formats (pixel format, color space), and available presentation modes.
     internal SwapChainSupport GetSwapChainSupport(PhysicalDevice physicalDevice)
     {
         // Basic surface capabilities.

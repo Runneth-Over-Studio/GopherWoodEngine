@@ -9,26 +9,18 @@ namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submo
 
 internal unsafe class VulkanSwapChain : IDisposable
 {
-    /// <summary>
-    /// Basic purpose is to ensure that the image that we're currently rendering to is different from the one that is currently on the screen. 
-    /// This is important to make sure that only complete images are shown.
-    /// </summary>
+    // Basic purpose is to ensure that the image that we're currently rendering to is different from the one that is currently on the screen. 
+    // This is important to make sure that only complete images are shown.
     internal SwapchainKHR SwapChain { get; }
 
-    /// <summary>
-    /// Resolution of the swap chain images. Almost always exactly equal to the resolution of the window that we're drawing to in pixels.
-    /// </summary>
+    // Resolution of the swap chain images. Almost always exactly equal to the resolution of the window that we're drawing to in pixels.
     internal Extent2D Extent { get; }
 
-    /// <summary>
-    /// Specifies the color channels and types.
-    /// </summary>
+    // Specifies the color channels and types.
     internal Format ImageFormat { get; }
 
-    /// <summary>
-    /// Image view for every image in the swap chain.
-    /// Image views describe how to access the image and which part of the image to access.
-    /// </summary>
+    // Image view for every image in the swap chain.
+    // Image views describe how to access the image and which part of the image to access.
     internal ImageView[] ImageViews { get; }
 
     internal Image[] Images { get; }

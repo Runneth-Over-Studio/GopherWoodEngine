@@ -12,32 +12,22 @@ namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submo
 
 internal unsafe class VulkanDevices : IDisposable
 {
-    /// <summary>
-    /// Represents a physical device (GPU) that supports Vulkan as well as other defined features.
-    /// </summary>
+    // Represents a physical device (GPU) that supports Vulkan as well as other defined features.
     internal PhysicalDevice PhysicalDevice { get; }
 
-    /// <summary>
-    /// Used to interface with the physical device, allowing for resource management and command submission.
-    /// </summary>
+    // Used to interface with the physical device, allowing for resource management and command submission.
     internal Device LogicalDevice { get; }
 
-    /// <summary>
-    /// Indices of the queue families that are supported by the physical device.
-    /// Queue families allocate VkQueues, which have operations submitted to them to be asynchronously executed.
-    /// </summary>
+    // Indices of the queue families that are supported by the physical device.
+    // Queue families allocate VkQueues, which have operations submitted to them to be asynchronously executed.
     internal QueueFamilyIndices QueueFamilyIndices { get; }
 
-    /// <summary>
-    /// Graphics processing queue used for executing GPU commands.
-    /// Command buffers on multiple threads can all be submited at once on the main thread with a single low-overhead call.
-    /// </summary>
+    // Graphics processing queue used for executing GPU commands.
+    // Command buffers on multiple threads can all be submited at once on the main thread with a single low-overhead call.
     internal Queue GraphicsQueue { get; }
 
-    /// <summary>
-    /// Queue used to manage the presentation of items.
-    /// Command buffers on multiple threads can all be submited at once on the main thread with a single low-overhead call.
-    /// </summary>
+    // Queue used to manage the presentation of items.
+    // Command buffers on multiple threads can all be submited at once on the main thread with a single low-overhead call.
     internal Queue PresentQueue { get; }
 
     private readonly Vk _vk;

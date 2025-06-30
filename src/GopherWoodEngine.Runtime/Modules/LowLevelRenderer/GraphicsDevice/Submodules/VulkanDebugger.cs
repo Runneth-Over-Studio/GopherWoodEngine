@@ -10,9 +10,7 @@ namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submo
 
 internal unsafe class VulkanDebugger : IDisposable
 {
-    /// <summary>
-    /// Represents a debug messenger that is specific to our Vulkan instance and its layers, that receives messages from the Vulkan API.
-    /// </summary>
+    // Represents a debug messenger that is specific to our Vulkan instance and its layers, that receives messages from the Vulkan API.
     internal DebugUtilsMessengerEXT? Messenger { get; }
 
     private readonly ExtDebugUtils? _utils;
@@ -27,22 +25,16 @@ internal unsafe class VulkanDebugger : IDisposable
         Messenger = CreateDebugMessenger(_utils, _instance, logger);
     }
 
-    /// <summary>
-    /// Returns the names of the enabled validation layers.
-    /// Validation layers are optional components that hook into Vulkan function calls to 
-    /// catch common mistakes and provide additional debugging information.
-    /// </summary>
-    /// <remarks>
-    /// LunarG Vulkan SDK required to be installed.
-    /// </remarks>
+    // Returns the names of the enabled validation layers.
+    // Validation layers are optional components that hook into Vulkan function calls to 
+    // catch common mistakes and provide additional debugging information.
+    // LunarG Vulkan SDK required to be installed.
     internal static string[] GetEnabledLayerNames()
     {
         return ["VK_LAYER_KHRONOS_validation"];
     }
 
-    /// <summary>
-    /// Check if all of the requested layers are available. 
-    /// </summary>
+    // Check if all of the requested layers are available.
     internal static void CheckValidationLayerSupport(Vk vk, string vulkanSDKVersion)
     {
         uint layerCount = 0;
@@ -62,9 +54,7 @@ internal unsafe class VulkanDebugger : IDisposable
         }
     }
 
-    /// <summary>
-    /// Fill in <see cref="DebugUtilsMessengerCreateInfoEXT"/> structure with details about the messenger and its callback:
-    /// </summary>
+    // Fill in <see cref="DebugUtilsMessengerCreateInfoEXT"/> structure with details about the messenger and its callback.
     internal static void PopulateDebugMessengerCreateInfo(ref DebugUtilsMessengerCreateInfoEXT createInfo, ILogger<IGraphicsDevice> logger)
     {
         createInfo.SType = StructureType.DebugUtilsMessengerCreateInfoExt;

@@ -11,10 +11,8 @@ namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submo
 
 internal unsafe class VulkanPipeline : IDisposable
 {
-    /// <summary>
-    /// Specifies how many color and depth buffers there will be, how many samples to use for each of them 
-    /// and how their contents should be handled throughout the rendering operations.
-    /// </summary>
+    // Specifies how many color and depth buffers there will be, how many samples to use for each of them 
+    // and how their contents should be handled throughout the rendering operations.
     internal RenderPass RenderPass { get { return _renderPass; } }
 
     internal Pipeline GraphicsPipeline { get { return _graphicsPipeline; } }
@@ -258,17 +256,13 @@ internal unsafe class VulkanPipeline : IDisposable
         return shaderModule;
     }
 
-    /// <summary>
-    /// Read shader modules (SPV files) that were built and stored locally relative to the application.
-    /// </summary>
+    // Read shader modules (SPV files) that were built and stored locally relative to the application.
     private static byte[] GetLocalShaderBytes(string filePath)
     {
         return File.ReadAllBytes(filePath);
     }
 
-    /// <summary>
-    /// Read shader modules (SPV files) that were built and embedded into the application.
-    /// </summary>
+    // Read shader modules (SPV files) that were built and embedded into the application.
     private static byte[] GetEmbeddedShaderBytes(string filename)
     {
         //TODO: Right now have to build twice. First to build the shaders, then again for them to actually be available.

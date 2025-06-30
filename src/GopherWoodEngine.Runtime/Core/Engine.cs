@@ -5,8 +5,17 @@ using System;
 
 namespace GopherWoodEngine.Runtime.Core;
 
+/// <summary>
+/// Represents the core engine responsible for managing the game loop and systems.
+/// </summary>
+/// <remarks>
+/// Implements <see cref="IDisposable"/> to ensure proper cleanup of resources.
+/// </remarks>
 public class Engine : IDisposable
 {
+    /// <summary>
+    /// Gets the event system used to manage and dispatch application events.
+    /// </summary>
     public IEventSystem EventSystem { get; }
 
     private readonly IServiceProvider _services;
@@ -18,6 +27,10 @@ public class Engine : IDisposable
     private bool _isSuspended = false;
     private bool _disposed = false;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Engine"/> class, setting up the core services and event
+    /// subscriptions required for the game engine.
+    /// </summary>
     public Engine(Game game)
     {
         _services = EngineBuilder.Build(game.EngineConfig);
@@ -36,6 +49,9 @@ public class Engine : IDisposable
         _logger.LogDebug("Engine initialized.");
     }
 
+    /// <summary>
+    /// Starts the game loop.
+    /// </summary>
     public void Run()
     {
         _logger.LogDebug("Initiating game loop...");
@@ -71,12 +87,18 @@ public class Engine : IDisposable
         _isRunning = false;
     }
 
+    /// <summary>
+    /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
+    /// </summary>
     public void Dispose()
     {
         Dispose(disposing: true);
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    /// Releases the resources used by the current instance of the class if <paramref name="disposing"/> is <see langword="true"/>.
+    /// </summary>
     protected virtual void Dispose(bool disposing)
     {
         if (!_disposed)

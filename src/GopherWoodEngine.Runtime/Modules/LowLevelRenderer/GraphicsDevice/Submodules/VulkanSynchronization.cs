@@ -146,10 +146,8 @@ internal unsafe class VulkanSynchronization : IDisposable
         }
     }
 
-    /// <summary>
-    /// Creates a framebuffer (compatible with render pass) for all of the images in the swap chain, to 
-    /// use the one that corresponds to the retrieved image at drawing time.
-    /// </summary>
+    // Creates a framebuffer (compatible with render pass) for all of the images in the swap chain, to 
+    // use the one that corresponds to the retrieved image at drawing time.
     private static Framebuffer[] CreateFramebuffers(Vk vk, Device logicalDevice, VulkanSwapChain swapChain, RenderPass renderPass)
     {
         Framebuffer[] framebuffers = new Framebuffer[swapChain.ImageViews.Length];
