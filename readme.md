@@ -20,6 +20,6 @@ In general, development is following [Game Engine Architecture](https://www.game
 	// Linux
 	build.sh
 
-	//Windows
+	// Windows
 	./build.ps1
 ```
