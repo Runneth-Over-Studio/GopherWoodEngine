@@ -12,11 +12,14 @@ In general, development is following [Game Engine Architecture](https://www.game
 
 ## Build Requirements
 - The runtime requires the [Vulkan SDK](https://www.lunarg.com/vulkan-sdk/) to build/run. The SDK provides the Vulkan validation layers as well as the command line tools to compile the shaders. 
+	- 'VULKAN_SDK' environment variable expected to be set during installation.
 
-- You will have to update your csproj file to point to the folder where the 'glslc' compiler is found.
+- Build project must be run prior to launching other projects so the neccesary shaders get compiled and embedded into the engine runtime.
+	- The Build project uses the [Cake](https://cakebuild.net/) (C# Make) build orchestrator and can be launched from Visual Studio or run from script.
+```
+	// Linux
+	build.sh
 
-```xml
-	<PropertyGroup>
-		<VulkanBinPath>C:\VulkanSDK\1.4.313.2\Bin</VulkanBinPath>
-	</PropertyGroup>
+	//Windows
+	./build.ps1
 ```
