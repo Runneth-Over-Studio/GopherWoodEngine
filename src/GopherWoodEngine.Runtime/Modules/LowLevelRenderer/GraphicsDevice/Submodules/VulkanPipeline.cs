@@ -34,7 +34,7 @@ internal unsafe class VulkanPipeline : IDisposable
         _swapChain = swapChain;
         _renderPass = CreateRenderPass();
         _pipelineLayout = CreatePipelineLayout();
-        _graphicsPipeline = CreateGraphicsPipeline("09_shader_base.vert.spv", "09_shader_base.frag.spv");
+        _graphicsPipeline = CreateGraphicsPipeline("shader_base.vert.spv", "shader_base.frag.spv");
     }
 
     private RenderPass CreateRenderPass()

@@ -5,7 +5,7 @@ using Cake.Frosting;
 namespace Build.Tasks;
 
 [TaskName("Tests")]
-[IsDependentOn(typeof(CompileTask))]
+[IsDependentOn(typeof(CompileProjectsTask))]
 public sealed class TestsTask : FrostingTask<BuildContext>
 {
     public override void Run(BuildContext context)

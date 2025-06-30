@@ -1,9 +1,9 @@
 ﻿TODO: Build Tasks
 	☑ Restore
 	☑ Clean
-	☐ Compile Shaders
 	☐ Version (if release, increment version number)
-	☑ Compile
+	☑ Compile Shaders
+	☑ Compile Projects
 	☐ Analyze (Possibilities: StyleCop, DupFinder, Roslyn Analyzers, InspectCode)
 	☑ Tests
 	☐ Documentation (if release, generate GitHub wiki documentation)

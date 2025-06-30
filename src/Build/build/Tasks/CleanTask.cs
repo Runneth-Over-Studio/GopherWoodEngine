@@ -1,4 +1,5 @@
 ﻿using Cake.Common.IO;
+using Cake.Core.Diagnostics;
 using Cake.Core.IO;
 using Cake.Frosting;
 using System;
@@ -21,6 +22,7 @@ public sealed class CleanTask : FrostingTask<BuildContext>
             if (!dir.FullPath.Equals(buildProjectDebugDir.FullPath, StringComparison.OrdinalIgnoreCase))
             {
                 context.CleanDirectory(dir);
+                context.Log.Information($"Cleaned {dir}");
             }
         }
     }

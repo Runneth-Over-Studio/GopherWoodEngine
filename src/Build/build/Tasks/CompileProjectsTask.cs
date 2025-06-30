@@ -9,9 +9,9 @@ using System.Linq;
 
 namespace Build.Tasks;
 
-[TaskName("Compile")]
-[IsDependentOn(typeof(RestoreTask))]
-public sealed class CompileTask : FrostingTask<BuildContext>
+[TaskName("Compile Projects")]
+[IsDependentOn(typeof(CompileShadersTask))]
+public sealed class CompileProjectsTask : FrostingTask<BuildContext>
 {
     public override void Run(BuildContext context)
     {
