@@ -32,7 +32,7 @@ internal unsafe class VulkanPresenter : IDisposable
         _devices = new VulkanDevices(vk, instance, _surface, enableValidationLayers);
         _swapChain = new VulkanSwapChain(vk, instance, _surface, _devices, window.FramebufferSize);
         _pipeline = new VulkanPipeline(vk, _devices.LogicalDevice, _swapChain);
-        _sync = new VulkanSynchronization(vk, _devices.LogicalDevice, _swapChain, _pipeline, _devices.QueueFamilyIndices.GraphicsIndex);
+        _sync = new VulkanSynchronization(vk, _devices, _swapChain, _pipeline, _devices.QueueFamilyIndices.GraphicsIndex);
 
         _window.Resize += OnWindowResize;
     }
