@@ -28,6 +28,8 @@ public sealed class EventSystemTests
         // Assert
         Assert.IsTrue(handlerCalled, "Handler should have been called.");
         Assert.AreEqual(2024, receivedValue, "Handler should receive correct event data.");
+
+        eventSystem.Dispose();
     }
 
     private class TestEventArgs : EventArgs
