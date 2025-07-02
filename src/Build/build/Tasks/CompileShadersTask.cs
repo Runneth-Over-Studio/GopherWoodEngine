@@ -5,6 +5,7 @@ using Cake.Core.Diagnostics;
 using Cake.Core.IO;
 using Cake.Frosting;
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace Build.Tasks;
@@ -17,6 +18,8 @@ public sealed class CompileShadersTask : FrostingTask<BuildContext>
 
     public override void Run(BuildContext context)
     {
+        Stopwatch stopwatch = Stopwatch.StartNew();
+
         string vulkanSdkPath = GetVulkanSDKPath(context);
         string glslcFileName = GetGlslcFileName(context);
         string glslcPath = System.IO.Path.Combine(vulkanSdkPath, "Bin", glslcFileName);
@@ -30,7 +33,9 @@ public sealed class CompileShadersTask : FrostingTask<BuildContext>
         context.StartProcess(glslcPath, new ProcessSettings { Arguments = string.Format(ARGS_FORMAT, vertexSourcePath, vertexSPIRVPath) });
         context.StartProcess(glslcPath, new ProcessSettings { Arguments = string.Format(ARGS_FORMAT, fragmentSourcePath, fragmentSPIRVPath) });
 
-        context.Log.Information("Compiled SPIR-V shader binaries.");
+        stopwatch.Stop();
+        double completionTime = Math.Round(stopwatch.Elapsed.TotalSeconds, 1);
+        context.Log.Information($"Compilation of SPIR-V shader binaries complete ({completionTime}s)");
     }
 
     private string GetVulkanSDKPath(BuildContext context)
