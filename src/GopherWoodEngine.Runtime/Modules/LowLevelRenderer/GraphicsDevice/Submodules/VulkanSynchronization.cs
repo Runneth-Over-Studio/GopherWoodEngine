@@ -26,7 +26,7 @@ internal unsafe class VulkanSynchronization : IDisposable
         _logicalDevice = devices.LogicalDevice;
         _framebuffers = CreateFramebuffers(vk, _logicalDevice, swapChain, pipeline.RenderPass);
         _commandPool = CreateCommandPool(vk, _logicalDevice, queueFamilyGraphicsIndex);
-        _vertex = new VulkanVertex(vk, devices);
+        _vertex = new VulkanVertex(vk, devices, _commandPool);
         _commandBuffers = CreateCommandBuffers(vk, _commandPool, _vertex, _logicalDevice, swapChain.Extent, pipeline, _framebuffers);
         _imageAvailableSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];
         _renderFinishedSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];
@@ -38,7 +38,7 @@ internal unsafe class VulkanSynchronization : IDisposable
 
     internal bool Present(Queue graphicsQueue, Queue presentQueue, VulkanSwapChain swapChain, int currentFrame)
     {
-        _vk.WaitForFences(_logicalDevice, 1, in _inFlightFences![currentFrame], Vk.True, ulong.MaxValue);
+        _vk.WaitForFences(_logicalDevice, 1, in _inFlightFences[currentFrame], Vk.True, ulong.MaxValue);
 
         uint imageIndex = 0;
         Result result = swapChain.KhrSwapChain.AcquireNextImage(_logicalDevice, swapChain.SwapChain, ulong.MaxValue, _imageAvailableSemaphores[currentFrame], default, ref imageIndex);
