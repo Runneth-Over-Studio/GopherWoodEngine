@@ -16,10 +16,15 @@ In general, development is following [Game Engine Architecture](https://www.game
 
 - Build project must be run prior to launching other projects so the neccesary shaders get compiled and embedded into the engine runtime.
 	- The Build project uses the [Cake](https://cakebuild.net/) (C# Make) build orchestrator and can be launched from Visual Studio or run from script.
-```
-	// Linux
-	build.sh
 
-	// Windows
-	./build.ps1
-```
+		- On OSX/Linux run:
+
+		```bash
+		build.sh
+		```
+ 
+		- On Windows PowerShell run:
+
+		```powershell
+		./build.ps1
+		```
