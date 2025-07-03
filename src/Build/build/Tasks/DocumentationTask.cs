@@ -1,7 +1,8 @@
 ﻿using Build.DTOs;
+using Cake.Common;
 using Cake.Common.IO;
 using Cake.Core.Diagnostics;
-using Cake.DocFx;
+using Cake.Core.IO;
 using Cake.Frosting;
 using System;
 using System.Diagnostics;
@@ -29,27 +30,31 @@ public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
 
     public override async Task RunAsync(BuildContext context)
     {
-        await VerifyDocfxToolAsync(context);
+        string docfxExePath = await VerifyDocfxToolAsync(context);
 
         Stopwatch stopwatch = Stopwatch.StartNew();
 
         // Generate documentation.
+        // CLI Reference: https://dotnet.github.io/docfx/reference/docfx-cli-reference/overview.html
+
         //TODO: Whatever I have to do to make this work. ref https://code-maze.com/docfx-generating-source-code-documentation/
-        context.DocFxBuild("./docfx.json");
+
+        string workspace = context.EngineOutputDirectory + context.Directory("Docs");
+        context.StartProcess(docfxExePath, new ProcessSettings { Arguments = $"init -y -o {workspace}" });
 
         stopwatch.Stop();
         double completionTime = Math.Round(stopwatch.Elapsed.TotalSeconds, 1);
         context.Log.Information($"Documentation generation complete ({completionTime}s)");
     }
 
-    private static async Task VerifyDocfxToolAsync(BuildContext context)
+    private static async Task<string> VerifyDocfxToolAsync(BuildContext context)
     {
         (string platform, string extension) = GetDocFXPlatformAndExtension();
         string docfxExe = $"./tools/docfx/docfx{extension}";
 
         if (context.FileExists(docfxExe))
         {
-            return;
+            return docfxExe;
         }
 
         try
@@ -99,6 +104,8 @@ public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
         {
             context.Log.Error("Failed to download and unzip docfx tool: {0}", ex);
         }
+
+        return docfxExe;
     }
 
     private static (string, string) GetDocFXPlatformAndExtension()
