@@ -7,7 +7,7 @@ namespace Build.Tasks;
 // The top-level default task is the entry point for the build process when a command-line target isn't specified.
 
 [TaskName("Default")]
-[IsDependentOn(typeof(PackageTask))]
+[IsDependentOn(typeof(DocumentationTask))]
 public class DefaultTask : FrostingTask
 {
     public override void Run(ICakeContext context)

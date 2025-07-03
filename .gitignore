@@ -405,5 +405,8 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 
+# Build tools
+src/Build/build/tools/
+
 # Compiled SPIR-V Shaders
 *.spv
