@@ -11,11 +11,12 @@ In general, development is following [Game Engine Architecture](https://www.game
 > This is an in-development, pre-alpha, engine and subject to significant change.
 
 ## Build Requirements
-- The runtime requires the [Vulkan SDK](https://www.lunarg.com/vulkan-sdk/) to build/run. The SDK provides the Vulkan validation layers as well as the command line tools to compile the shaders. 
-	- 'VULKAN_SDK' environment variable expected to be set during installation.
+- All projects target the LTS version of the [.NET SDK](https://dotnet.microsoft.com/en-us/download). The SDK also provides the dotnet command line tool which the build makes use of.
+- The engine renderer requires the [Vulkan SDK](https://www.lunarg.com/vulkan-sdk/). The SDK provides the Vulkan validation layers as well as the command line tools to compile the shaders. 
+	- 'VULKAN_SDK' environment variable expected to be set during installation and is required by the build.
 
 - Build project must be run prior to launching other projects so the neccesary shaders get compiled and embedded into the engine runtime.
-	- The Build project uses the [Cake](https://cakebuild.net/) (C# Make) build orchestrator and can be launched from Visual Studio or run from script.
+	- The Build project uses the [Cake](https://cakebuild.net/) (C# Make) build orchestrator and can be launched from within your IDE or run from script.
 
 		- On OSX/Linux run:
 
