@@ -54,6 +54,11 @@ public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
         docfxSrc.Src = "../"; // Glob patterns in docfx currently does not support crawling files outside the directory containing docfx.json. Use the metadata.src.src property.
         docfxSrc.Files = [$"{context.PublishedProjectName}.dll"]; // When the file extension is .dll or .exe, docfx produces API docs by reflecting the assembly and the side-by-side XML documentation file.
 
+        //TODO: Need to further tweak the docfx.json attributes to make the resulting html docs our own.
+        //      ref: https://dotnet.github.io/docfx/docs/basic-concepts.html
+        //      ref: https://code-maze.com/docfx-generating-source-code-documentation/
+        //      ref: https://youtu.be/Sz1lCeedcPI?si=I0YHUhgI0ZKjO2cq
+
         // Overwrite docfx.json file with the updated values.
         await using (FileStream writeStream = File.Create(contextToConfigPath))
         {

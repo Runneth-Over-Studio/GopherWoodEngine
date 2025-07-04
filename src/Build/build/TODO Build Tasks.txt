@@ -1,17 +1,14 @@
 ﻿TODO: Build Tasks
-	☑ Restore
 	☑ Clean
+	☑ Restore
 	☐ Version (if release, increment version number)
 	☑ Compile Shaders
 	☑ Compile Projects
 	☐ Analyze (Possibilities: StyleCop, DupFinder, Roslyn Analyzers, InspectCode)
 	☑ Tests
-	☐ Documentation (if release, generate GitHub wiki documentation)
-		- https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/xmldoc/#tools-that-accept-xml-documentation-input
-		- https://github.com/cake-contrib/Cake.DocFx
-		- https://code-maze.com/docfx-generating-source-code-documentation/
 	☑ Package (if release, engine runtime NuGet package)
+	☑ Documentation (if release, generate html api documentation)
 	☐ Publish (Would this be different than a release compile?)
-	☐ Deploy (if release, deploy to NuGet gallery and GitHub repo releases)
+	☐ Deploy (if release, deploy to NuGet gallery and GitHub repo releases, deploy html api documentation)
 		- https://github.com/cake-contrib/Cake.GitHub
 	
