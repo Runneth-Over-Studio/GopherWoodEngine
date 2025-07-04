@@ -24,7 +24,7 @@ public sealed class CompileShadersTask : FrostingTask<BuildContext>
         string glslcFileName = GetGlslcFileName(context);
         string glslcPath = System.IO.Path.Combine(vulkanSdkPath, "Bin", glslcFileName);
 
-        ConvertableDirectoryPath shadersPath = context.EngineDirectory + context.Directory("Modules/LowLevelRenderer/Shaders");
+        ConvertableDirectoryPath shadersPath = context.RuntimeDirectory + context.Directory("Modules/LowLevelRenderer/Shaders");
         string vertexSourcePath = System.IO.Path.Combine(shadersPath, "shader_base.vert");
         string vertexSPIRVPath = System.IO.Path.Combine(shadersPath, "shader_base.vert.spv");
         string fragmentSourcePath = System.IO.Path.Combine(shadersPath, "shader_base.frag");
@@ -38,7 +38,7 @@ public sealed class CompileShadersTask : FrostingTask<BuildContext>
         context.Log.Information($"Compilation of SPIR-V shader binaries complete ({completionTime}s)");
     }
 
-    private string GetVulkanSDKPath(BuildContext context)
+    private static string GetVulkanSDKPath(BuildContext context)
     {
         string vulkanSdkPath = context.EnvironmentVariable("VULKAN_SDK");
 
@@ -50,7 +50,7 @@ public sealed class CompileShadersTask : FrostingTask<BuildContext>
         return vulkanSdkPath;
     }
 
-    private string GetGlslcFileName(BuildContext context)
+    private static string GetGlslcFileName(BuildContext context)
     {
         string glslcFileName = "glslc";
 

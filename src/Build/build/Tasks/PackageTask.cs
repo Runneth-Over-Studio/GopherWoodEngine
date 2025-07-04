@@ -17,8 +17,8 @@ public sealed class PackageTask : FrostingTask<BuildContext>
 
     public override void Run(BuildContext context)
     {
-        string engineProjectPath = $"{context.SourceDirectory}/GopherWoodEngine.Runtime/GopherWoodEngine.Runtime.csproj";
-
+        string engineProjectPath = context.RuntimeDirectory + context.File($"{context.PublishedProjectName}.csproj");
+        
         //TODO: Readme, icon, etc.
 
         context.DotNetPack(engineProjectPath, new DotNetPackSettings
@@ -26,7 +26,7 @@ public sealed class PackageTask : FrostingTask<BuildContext>
             Configuration = context.Config.ToString(),
             NoRestore = true,
             NoBuild = true,
-            OutputDirectory = context.EngineOutputDirectory + context.Directory("NuGet")
+            OutputDirectory = context.RuntimeOutputDirectory + context.Directory("NuGet")
         });
     }
 }

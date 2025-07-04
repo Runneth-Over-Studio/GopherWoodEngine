@@ -5,6 +5,7 @@ using Cake.Core.Diagnostics;
 using Cake.Core.IO;
 using Cake.Frosting;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -34,13 +35,35 @@ public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
 
         Stopwatch stopwatch = Stopwatch.StartNew();
 
-        // Generate documentation.
-        // CLI Reference: https://dotnet.github.io/docfx/reference/docfx-cli-reference/overview.html
-
-        //TODO: Whatever I have to do to make this work. ref https://code-maze.com/docfx-generating-source-code-documentation/
-
-        string workspace = context.EngineOutputDirectory + context.Directory("Docs");
+        // Generate the initial default docfx.json file.
+        string workspace = $"../../{context.PublishedProjectName}/bin/{context.Config}/{context.TargetFramework}/Docs"; // Starts crawling from the docfx tool.
         context.StartProcess(docfxExePath, new ProcessSettings { Arguments = $"init -y -o {workspace}" });
+
+        // Read and update the docfx.json file with the correct paths and files.
+        string contextToConfigPath = context.RuntimeOutputDirectory + context.Directory("Docs/docfx.json");
+        await using FileStream readStream = File.OpenRead(contextToConfigPath);
+        DocfxRoot? docfxRoot = await JsonSerializer.DeserializeAsync<DocfxRoot>(readStream, context.SerializerOptions);
+        DocfxSrc? docfxSrc = docfxRoot?.Metadata?.FirstOrDefault()?.Src?.FirstOrDefault();
+        if (docfxSrc == null)
+        {
+            context.Log.Error("Failed to read & update default docfx.json file.");
+            return;
+        }
+        readStream.Dispose();
+
+        docfxSrc.Src = "../"; // Glob patterns in docfx currently does not support crawling files outside the directory containing docfx.json. Use the metadata.src.src property.
+        docfxSrc.Files = [$"{context.PublishedProjectName}.dll"]; // When the file extension is .dll or .exe, docfx produces API docs by reflecting the assembly and the side-by-side XML documentation file.
+
+        // Overwrite docfx.json file with the updated values.
+        await using (FileStream writeStream = File.Create(contextToConfigPath))
+        {
+            await JsonSerializer.SerializeAsync(writeStream, docfxRoot, context.SerializerOptions);
+        }
+
+        // Generate documentation HTML.
+        string workspaceToConfigPath = $"{workspace}/docfx.json";
+        context.StartProcess(docfxExePath, new ProcessSettings { Arguments = $"metadata {workspaceToConfigPath}" });
+        context.StartProcess(docfxExePath, new ProcessSettings { Arguments = $"build {workspaceToConfigPath}" });
 
         stopwatch.Stop();
         double completionTime = Math.Round(stopwatch.Elapsed.TotalSeconds, 1);
