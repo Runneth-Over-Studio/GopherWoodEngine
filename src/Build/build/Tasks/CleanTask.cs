@@ -17,7 +17,7 @@ public sealed class CleanTask : FrostingTask<BuildContext>
         // Exclude this Build project's own bin/config directory.
         DirectoryPath buildProjectDebugDir = context.MakeAbsolute(context.Directory($"./bin/{context.Config}"));
 
-        foreach (var dir in debugDirs)
+        foreach (DirectoryPath dir in debugDirs)
         {
             if (!dir.FullPath.Equals(buildProjectDebugDir.FullPath, StringComparison.OrdinalIgnoreCase))
             {
