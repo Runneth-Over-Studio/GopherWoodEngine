@@ -34,14 +34,14 @@ public sealed class ProcessImagesTask : AsyncFrostingTask<BuildContext>
         context.EnsureDirectoryExists(releaaseContentDirectory);
 
         // Convert source icon SVG to PNG and save to new content folder.
-        context.Log.Information($"Creating project icon image (PNG) from source SVG file...");
+        context.Log.Information($"Creating project logo image (PNG) from source SVG file...");
         DirectoryPath sourceIconDirectory = context.RootDirectory + context.Directory("content") + context.Directory("icon");
         string sourceSVGPath = System.IO.Path.Combine(sourceIconDirectory.FullPath, "gopherwood-icon.svg");
-        string pngPath = System.IO.Path.Combine(releaaseContentDirectory.FullPath, "icon.png");
+        string pngPath = System.IO.Path.Combine(releaaseContentDirectory.FullPath, "logo.png");
         await ConvertSvgToPngAsync(sourceSVGPath, pngPath);
 
         // Convert PNG to a favicon image and save to new content foler.
-        context.Log.Information($"Creating project favicon image (ICO) from project icon image...");
+        context.Log.Information($"Creating project favicon image (ICO) from project logo image...");
         string icoPath = System.IO.Path.Combine(releaaseContentDirectory.FullPath, "favicon.ico");
         await ConvertPngToIcoAsync(pngPath, icoPath);
 

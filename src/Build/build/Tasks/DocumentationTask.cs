@@ -61,7 +61,7 @@ public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
         globalMetadata.AppTitle = "Gopher Wood Engine"; // Used in the generated HTML title tag.
         globalMetadata.AppName = "Gopher Wood Engine"; // Used in the generated HTML header.
         globalMetadata.AppFaviconPath = "./images/favicon.ico";
-        globalMetadata.AppLogoPath = "./images/icon.svg";
+        globalMetadata.AppLogoPath = "./images/logo.png"; //TODO: Works but image is rendered too large in the header. Need to fix this in the docfx template.
 
         //TODO: Need to further tweak the docfx source files to make the resulting html docs our own.
         //      ref: https://dotnet.github.io/docfx/docs/basic-concepts.html
@@ -116,19 +116,19 @@ public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
 
     private static void CopyDocfxImages(BuildContext context, DirectoryPath workspaceDirectoryPath)
     {
-        DirectoryPath docfxImageDirectory = workspaceDirectoryPath + context.Directory("images");
-        context.EnsureDirectoryExists(docfxImageDirectory);
+        DirectoryPath docfxImageDirectoryPath = workspaceDirectoryPath + context.Directory("images");
+        context.EnsureDirectoryExists(docfxImageDirectoryPath);
 
-        DirectoryPath sourceIconDirectory = context.RootDirectory + context.Directory("content/icon");
+        DirectoryPath releaseContentDirectoryPath = context.RuntimeOutputDirectory + context.Directory("Content");
+
         context.CopyFile(
-            System.IO.Path.Combine(sourceIconDirectory.FullPath, "gopherwood-icon.svg"),
-            System.IO.Path.Combine(docfxImageDirectory.FullPath, "icon.svg")
+            System.IO.Path.Combine(releaseContentDirectoryPath.FullPath, "logo.png"),
+            System.IO.Path.Combine(docfxImageDirectoryPath.FullPath, "logo.png")
         );
 
-        DirectoryPath releaaseContentDirectory = context.RuntimeOutputDirectory + context.Directory("Content");
         context.CopyFile(
-            System.IO.Path.Combine(releaaseContentDirectory.FullPath, "favicon.ico"),
-            System.IO.Path.Combine(docfxImageDirectory.FullPath, "favicon.ico")
+            System.IO.Path.Combine(releaseContentDirectoryPath.FullPath, "favicon.ico"),
+            System.IO.Path.Combine(docfxImageDirectoryPath.FullPath, "favicon.ico")
         );
     }
 }
