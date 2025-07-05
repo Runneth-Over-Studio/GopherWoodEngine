@@ -1,11 +1,11 @@
-﻿using Newtonsoft.Json;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace Build.DTOs;
 
 public class DocfxRoot
 {
-    [JsonProperty("$schema")]
+    [JsonPropertyName("$schema")]
     public string? Schema { get; set; }
     public List<DocfxMetadata>? Metadata { get; set; }
     public DocfxBuild? Build { get; set; }
@@ -45,11 +45,11 @@ public class DocfxContent
 
 public class DocfxGlobalMetadata
 {
-    [JsonProperty("_appTitle")]
+    [JsonPropertyName("_appName")]
     public string? AppName { get; set; }
-    [JsonProperty("_appTitle")]
+    [JsonPropertyName("_appTitle")]
     public string? AppTitle { get; set; }
-    [JsonProperty("_enableSearch")]
+    [JsonPropertyName("_enableSearch")]
     public bool EnableSearch { get; set; }
     public bool Pdf { get; set; }
 }

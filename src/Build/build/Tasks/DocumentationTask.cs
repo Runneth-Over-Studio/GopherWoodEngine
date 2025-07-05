@@ -19,6 +19,7 @@ public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
 {
     public override bool ShouldRun(BuildContext context)
     {
+        //return context.Config == BuildConfigurations.Release;
         return true;
     }
 
@@ -43,7 +44,8 @@ public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
         await using FileStream readStream = File.OpenRead(contextToConfigPath);
         DocfxRoot? docfxRoot = await JsonSerializer.DeserializeAsync<DocfxRoot>(readStream, context.SerializerOptions);
         DocfxSrc? docfxSrc = docfxRoot?.Metadata?.FirstOrDefault()?.Src?.FirstOrDefault();
-        if (docfxSrc == null)
+        DocfxGlobalMetadata? globalMetadata = docfxRoot?.Build?.GlobalMetadata;
+        if (docfxSrc == null || globalMetadata == null)
         {
             context.Log.Error("Failed to read & update default docfx.json file.");
             return;
@@ -53,9 +55,13 @@ public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
         // Update the docfx config.
         docfxSrc.Src = "../"; // Glob patterns in docfx currently does not support crawling files outside the directory containing docfx.json. Use the metadata.src.src property.
         docfxSrc.Files = [$"{context.PublishedProjectName}.dll"]; // When the file extension is .dll or .exe, docfx produces API docs by reflecting the assembly and the side-by-side XML documentation file.
+        globalMetadata.AppTitle = "Gopher Wood Engine"; // Used in the generated HTML title tag.
+        globalMetadata.AppName = "Gopher Wood Engine"; // Used in the generated HTML header.
 
-        //TODO: Need to further tweak the docfx.json attributes to make the resulting html docs our own.
+        //TODO: Need to further tweak the docfx source files to make the resulting html docs our own.
         //      ref: https://dotnet.github.io/docfx/docs/basic-concepts.html
+        //      ref: https://dotnet.github.io/docfx/reference/docfx-json-reference.html
+        //      ref: https://dotnet.github.io/docfx/reference/docfx-json-reference.html#predefined-metadata
         //      ref: https://code-maze.com/docfx-generating-source-code-documentation/
         //      ref: https://youtu.be/Sz1lCeedcPI?si=I0YHUhgI0ZKjO2cq
 
