@@ -6,9 +6,10 @@
 	☑ Compile Projects
 	☐ Analyze (Possibilities: StyleCop, DupFinder, Roslyn Analyzers, InspectCode)
 	☑ Tests
-	☑ Package (if release, engine runtime NuGet package)
+	☑ Process Project Images (if release)
 	☑ Documentation (if release, generate html api documentation)
-	☐ Publish (Would this be different than a release compile?)
+	☑ Package (if release, engine runtime NuGet package)
+	☐ Publish (if release. Would this be different than a release compile?)
 	☐ Deploy (if release, deploy to NuGet gallery and GitHub repo releases, deploy html api documentation)
 		- https://github.com/cake-contrib/Cake.GitHub
 	

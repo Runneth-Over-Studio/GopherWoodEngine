@@ -51,5 +51,9 @@ public class DocfxGlobalMetadata
     public string? AppTitle { get; set; }
     [JsonPropertyName("_enableSearch")]
     public bool EnableSearch { get; set; }
+    [JsonPropertyName("_appFaviconPath")]
+    public string? AppFaviconPath { get; set; }
+    [JsonPropertyName("_appLogoPath")]
+    public string? AppLogoPath { get; set; }
     public bool Pdf { get; set; }
 }

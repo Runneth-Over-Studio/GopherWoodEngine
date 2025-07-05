@@ -7,12 +7,13 @@ using static Build.BuildContext;
 namespace Build.Tasks;
 
 [TaskName("Package")]
-[IsDependentOn(typeof(TestsTask))]
+[IsDependentOn(typeof(ProcessImagesTask))]
 public sealed class PackageTask : FrostingTask<BuildContext>
 {
     public override bool ShouldRun(BuildContext context)
     {
-        return context.Config == BuildConfigurations.Release;
+        //return context.Config == BuildConfigurations.Release;
+        return true;
     }
 
     public override void Run(BuildContext context)

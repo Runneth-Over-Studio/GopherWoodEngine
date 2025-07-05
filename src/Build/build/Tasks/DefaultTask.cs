@@ -8,6 +8,7 @@ namespace Build.Tasks;
 
 [TaskName("Default")]
 [IsDependentOn(typeof(DocumentationTask))]
+[IsDependentOn(typeof(PackageTask))]
 public class DefaultTask : FrostingTask
 {
     public override void Run(ICakeContext context)

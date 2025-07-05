@@ -19,6 +19,7 @@ public class BuildContext : FrostingContext
     public JsonSerializerOptions SerializerOptions { get; }
     public string TargetFramework { get; }
     public string PublishedProjectName { get; }
+    public ConvertableDirectoryPath RootDirectory { get; }
     public ConvertableDirectoryPath SourceDirectory { get; }
     public ConvertableDirectoryPath RuntimeDirectory { get; }
     public ConvertableDirectoryPath RuntimeOutputDirectory { get; }
@@ -28,7 +29,8 @@ public class BuildContext : FrostingContext
     {
         SerializerOptions = new() { PropertyNameCaseInsensitive = true };
         PublishedProjectName = "GopherWoodEngine.Runtime";
-        SourceDirectory = context.Directory("../../../src");
+        RootDirectory = context.Directory("../../../");
+        SourceDirectory = RootDirectory + context.Directory("src");
         RuntimeDirectory = SourceDirectory + context.Directory(PublishedProjectName);
         TargetFramework = context.XmlPeek(RuntimeDirectory + context.File($"{PublishedProjectName}.csproj"), "/Project/PropertyGroup/TargetFramework");
 

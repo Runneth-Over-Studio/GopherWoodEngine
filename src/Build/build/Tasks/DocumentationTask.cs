@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 namespace Build.Tasks;
 
 [TaskName("Documentation")]
-[IsDependentOn(typeof(PackageTask))]
+[IsDependentOn(typeof(ProcessImagesTask))]
 public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
 {
     public override bool ShouldRun(BuildContext context)
@@ -36,8 +36,11 @@ public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
         DirectoryPath workspaceDirectoryPath = context.RuntimeOutputDirectory + context.Directory("Docs");
         string workspaceFullPath = workspaceDirectoryPath.FullPath;
 
-        // Generate the initial default docfx.json file.
+        // Generate the docfx project and default docfx.json file.
         context.StartProcess("docfx", new ProcessSettings { Arguments = $"init -y -o {workspaceFullPath}" });
+
+        // Create docfx images directory and copy project images to it.
+        CopyDocfxImages(context, workspaceDirectoryPath);
 
         // Read the default docfx.json
         string contextToConfigPath = context.RuntimeOutputDirectory + context.Directory("Docs/docfx.json");
@@ -57,6 +60,8 @@ public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
         docfxSrc.Files = [$"{context.PublishedProjectName}.dll"]; // When the file extension is .dll or .exe, docfx produces API docs by reflecting the assembly and the side-by-side XML documentation file.
         globalMetadata.AppTitle = "Gopher Wood Engine"; // Used in the generated HTML title tag.
         globalMetadata.AppName = "Gopher Wood Engine"; // Used in the generated HTML header.
+        globalMetadata.AppFaviconPath = "./images/favicon.ico";
+        globalMetadata.AppLogoPath = "./images/icon.svg";
 
         //TODO: Need to further tweak the docfx source files to make the resulting html docs our own.
         //      ref: https://dotnet.github.io/docfx/docs/basic-concepts.html
@@ -107,5 +112,23 @@ public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
         }
 
         return true;
+    }
+
+    private static void CopyDocfxImages(BuildContext context, DirectoryPath workspaceDirectoryPath)
+    {
+        DirectoryPath docfxImageDirectory = workspaceDirectoryPath + context.Directory("images");
+        context.EnsureDirectoryExists(docfxImageDirectory);
+
+        DirectoryPath sourceIconDirectory = context.RootDirectory + context.Directory("content/icon");
+        context.CopyFile(
+            System.IO.Path.Combine(sourceIconDirectory.FullPath, "gopherwood-icon.svg"),
+            System.IO.Path.Combine(docfxImageDirectory.FullPath, "icon.svg")
+        );
+
+        DirectoryPath releaaseContentDirectory = context.RuntimeOutputDirectory + context.Directory("Content");
+        context.CopyFile(
+            System.IO.Path.Combine(releaaseContentDirectory.FullPath, "favicon.ico"),
+            System.IO.Path.Combine(docfxImageDirectory.FullPath, "favicon.ico")
+        );
     }
 }
