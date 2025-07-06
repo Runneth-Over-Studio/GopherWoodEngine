@@ -1,5 +1,5 @@
 <p align="left">
-  <img src="logo.png" width="175" alt="GopherWood Logo">
+  <img src="logo.png" width="175" alt="Gopher Wood Engine Logo">
 </p>
 
 # Gopher Wood Engine
