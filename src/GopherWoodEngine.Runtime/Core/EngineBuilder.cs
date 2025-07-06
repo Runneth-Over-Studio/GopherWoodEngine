@@ -13,7 +13,8 @@ internal static class EngineBuilder
         IServiceCollection services = new ServiceCollection();
 
         // Core Systems
-        services.AddDebugLogging(); //TODO: Something about not adding logging during release builds breaks DI.
+        services.AddDebugLogging();
+        services.AddReleaseLogging();
 
         // Gameplay Foundations
         services.AddSingleton<IEventSystem, EventSystem>();
@@ -40,5 +41,12 @@ internal static class EngineBuilder
                 options.TimestampFormat = "HH:mm:ss ";
             });
         });
+    }
+
+    [Conditional("RELEASE")]
+    private static void AddReleaseLogging(this IServiceCollection services)
+    {
+        services.AddLogging(); // No providers, but still registers ILogger<T>
+
     }
 }
