@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 namespace Build.Tasks;
 
 [TaskName("Documentation")]
-[IsDependentOn(typeof(ProcessImagesTask))]
+[IsDependentOn(typeof(CompileProjectsTask))]
 public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
 {
     public override bool ShouldRun(BuildContext context)

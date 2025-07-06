@@ -10,6 +10,7 @@ using System.Linq;
 namespace Build.Tasks;
 
 [TaskName("Compile Projects")]
+[IsDependentOn(typeof(ProcessImagesTask))]
 [IsDependentOn(typeof(CompileShadersTask))]
 public sealed class CompileProjectsTask : FrostingTask<BuildContext>
 {

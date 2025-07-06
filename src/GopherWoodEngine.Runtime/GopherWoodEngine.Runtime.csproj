@@ -8,6 +8,17 @@
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
 	<GenerateDocumentationFile>true</GenerateDocumentationFile>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	<Optimize>true</Optimize>
+	<Authors>Runneth Over Studio, LLC</Authors>
+	<Copyright>© Runneth Over Studio, LLC</Copyright>
+	<PackageId>RunnethOverStudio.GopherWoodEngine</PackageId>
+	<PackageLicenseExpression>MIT</PackageLicenseExpression>
+	<PackageReadmeFile>readme.md</PackageReadmeFile>
+	<PackageIcon>package-icon.png</PackageIcon>
+	<PackageProjectUrl>https://github.com/Runneth-Over-Studio/GopherWoodEngine</PackageProjectUrl>
+	<RepositoryUrl>https://github.com/Runneth-Over-Studio/GopherWoodEngine</RepositoryUrl>
+	<Description>Runneth Over Studio's in-house game engine.</Description>
+	<PackageTags>game engine</PackageTags>
     <Version>0.1.0</Version>
   </PropertyGroup>
 
@@ -21,6 +32,12 @@
   <!-- Embed all SPIR-V shader binaries as resources in the compiled assembly. -->
   <ItemGroup>
     <EmbeddedResource Include="**/*.spv" />
+  </ItemGroup>
+
+  <!-- Include readme & icon files in the NuGet package so they're available to be used by the PackageReadmeFile & PackageIcon properties. -->
+  <ItemGroup>
+	<None Include="../../readme.md" Pack="true" PackagePath="readme.md" />
+	<None Include="../../content/package-icon.png" Pack="true" PackagePath="package-icon.png" />
   </ItemGroup>
 
   <ItemGroup>

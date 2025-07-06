@@ -1,13 +1,13 @@
 ﻿using Cake.Common.IO;
 using Cake.Common.Tools.DotNet;
 using Cake.Common.Tools.DotNet.Pack;
+using Cake.Core.IO;
 using Cake.Frosting;
-using static Build.BuildContext;
 
 namespace Build.Tasks;
 
 [TaskName("Package")]
-[IsDependentOn(typeof(ProcessImagesTask))]
+[IsDependentOn(typeof(CompileProjectsTask))]
 public sealed class PackageTask : FrostingTask<BuildContext>
 {
     public override bool ShouldRun(BuildContext context)
@@ -19,15 +19,14 @@ public sealed class PackageTask : FrostingTask<BuildContext>
     public override void Run(BuildContext context)
     {
         string engineProjectPath = context.RuntimeDirectory + context.File($"{context.PublishedProjectName}.csproj");
-        
-        //TODO: Readme, icon, etc.
+        DirectoryPath nugetOutputDirectoryPath = context.RuntimeOutputDirectory + context.Directory("NuGet");
 
         context.DotNetPack(engineProjectPath, new DotNetPackSettings
         {
             Configuration = context.Config.ToString(),
             NoRestore = true,
             NoBuild = true,
-            OutputDirectory = context.RuntimeOutputDirectory + context.Directory("NuGet")
+            OutputDirectory = nugetOutputDirectoryPath
         });
     }
 }

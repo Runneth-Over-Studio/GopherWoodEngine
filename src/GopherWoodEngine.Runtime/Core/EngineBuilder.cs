@@ -13,7 +13,7 @@ internal static class EngineBuilder
         IServiceCollection services = new ServiceCollection();
 
         // Core Systems
-        services.AddDebugLogging();
+        services.AddDebugLogging(); //TODO: Something about not adding logging during release builds breaks DI.
 
         // Gameplay Foundations
         services.AddSingleton<IEventSystem, EventSystem>();

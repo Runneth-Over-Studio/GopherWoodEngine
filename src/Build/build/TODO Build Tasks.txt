@@ -1,15 +1,15 @@
 ﻿TODO: Build Tasks
-	☑ Clean
-	☑ Restore
-	☐ Version (if release, increment version number)
-	☑ Compile Shaders
-	☑ Compile Projects
-	☐ Analyze (Possibilities: StyleCop, DupFinder, Roslyn Analyzers, InspectCode)
-	☑ Tests
-	☑ Process Project Images (if release)
-	☑ Documentation (if release, generate html api documentation)
-	☑ Package (if release, engine runtime NuGet package)
-	☐ Publish (if release. Would this be different than a release compile?)
-	☐ Deploy (if release, deploy to NuGet gallery and GitHub repo releases, deploy html api documentation)
-		- https://github.com/cake-contrib/Cake.GitHub
+	☑ Clean - Deletes the Debug or Release directories in the project bin directories.
+	☑ Restore - Restores NuGet packages for the solution.
+		☑ Process Images - If release, processes images readme, NuGet package, and documentation.
+		☐ Version (if release, increment version number)
+		☑ Compile Shaders - Compiles the SPIR-V shader binaries that get embedded into runtime.
+			☑ Compile Projects
+				☐ Analyze (Possibilities: StyleCop, DupFinder, Roslyn Analyzers, InspectCode)
+				☑ Tests
+				☑ Documentation - Uses docfx, with previously processed images, to generate the API documentation.
+				☑ Package - If release, generate the NuGet package for the runtime using previously processed images and project properties.
+				☐ Publish (if release. Would this be different than a release compile?)
+				☐ Deploy (if release, deploy to NuGet gallery and GitHub repo releases, deploy html api documentation)
+					- https://github.com/cake-contrib/Cake.GitHub
 	

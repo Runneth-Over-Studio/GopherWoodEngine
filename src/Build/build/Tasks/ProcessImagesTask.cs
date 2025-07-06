@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 namespace Build.Tasks;
 
 [TaskName("Process Images")]
-[IsDependentOn(typeof(TestsTask))]
+[IsDependentOn(typeof(RestoreTask))]
 public sealed class ProcessImagesTask : AsyncFrostingTask<BuildContext>
 {
     public override bool ShouldRun(BuildContext context)
@@ -30,20 +30,33 @@ public sealed class ProcessImagesTask : AsyncFrostingTask<BuildContext>
         Stopwatch stopwatch = Stopwatch.StartNew();
 
         // Create content folder in output location to place resources.
-        DirectoryPath releaaseContentDirectory = context.RuntimeOutputDirectory + context.Directory("Content");
-        context.EnsureDirectoryExists(releaaseContentDirectory);
+        DirectoryPath releaseContentDirectory = context.RuntimeOutputDirectory + context.Directory("Content");
+        context.EnsureDirectoryExists(releaseContentDirectory);
 
         // Convert source icon SVG to PNG and save to new content folder.
         context.Log.Information($"Creating project logo image (PNG) from source SVG file...");
-        DirectoryPath sourceIconDirectory = context.RootDirectory + context.Directory("content") + context.Directory("icon");
-        string sourceSVGPath = System.IO.Path.Combine(sourceIconDirectory.FullPath, "gopherwood-icon.svg");
-        string pngPath = System.IO.Path.Combine(releaaseContentDirectory.FullPath, "logo.png");
+        DirectoryPath sourceContentDirectory = context.RootDirectory + context.Directory("content");
+        DirectoryPath sourceLogoDirectory = sourceContentDirectory + context.Directory("logo");
+        string sourceSVGPath = System.IO.Path.Combine(sourceLogoDirectory.FullPath, "gopherwood-logo.svg");
+        string pngPath = System.IO.Path.Combine(releaseContentDirectory.FullPath, "logo.png");
         await ConvertSvgToPngAsync(sourceSVGPath, pngPath);
 
         // Convert PNG to a favicon image and save to new content foler.
         context.Log.Information($"Creating project favicon image (ICO) from project logo image...");
-        string icoPath = System.IO.Path.Combine(releaaseContentDirectory.FullPath, "favicon.ico");
+        string icoPath = System.IO.Path.Combine(releaseContentDirectory.FullPath, "favicon.ico");
         await ConvertPngToIcoAsync(pngPath, icoPath);
+
+        // Create NuGet package icon. Microsoft recommends an image resolution of 128x128 and must be either JPEG or PNG.
+        context.Log.Information($"Creating NuGet package icon...");
+        string packageIconPath = System.IO.Path.Combine(sourceContentDirectory.FullPath, "package-icon.png");
+        using (Image image = await Image.LoadAsync(pngPath))
+        using (Image resized = image.Clone(ctx => ctx.Resize(128, 128)))
+        {
+            await resized.SaveAsync(packageIconPath, new PngEncoder());
+        }
+
+        // Copy the logo image to the repo root folder. Used in the readme markdown document.
+        context.CopyFile(pngPath, System.IO.Path.Combine(context.RootDirectory.Path.FullPath, "logo.png"));
 
         stopwatch.Stop();
         double completionTime = Math.Round(stopwatch.Elapsed.TotalSeconds, 1);
