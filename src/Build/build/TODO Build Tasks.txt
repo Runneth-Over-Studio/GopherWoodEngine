@@ -9,7 +9,10 @@
 				☑ Tests
 				☑ Documentation - Uses docfx, with previously processed images, to generate the API documentation.
 				☑ Package - If release, generate the NuGet package for the runtime using previously processed images and project properties.
-				☐ Publish (if release. Would this be different than a release compile?)
-				☐ Deploy (if release, deploy to NuGet gallery and GitHub repo releases, deploy html api documentation)
+				☐ Publish - When there is an editor project, and if release, create a deployable package. The runtime deploys as a NuGet package so publish is not needed for that.
+				☐ Deploy - If release: 
+					- Serve API documentation.
+					- If NuGet package version changed, deploy to gallery and GitHub repo releases. 
+					- If editor version changed, deploy to GitHub repo releases.)
 					- https://github.com/cake-contrib/Cake.GitHub
 	

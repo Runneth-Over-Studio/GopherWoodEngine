@@ -9,7 +9,9 @@
 	<GenerateDocumentationFile>true</GenerateDocumentationFile>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	<Optimize>true</Optimize>
+	<Product>Gopher Wood Engine</Product>
 	<Authors>Runneth Over Studio, LLC</Authors>
+	<Company>Runneth Over Studio, LLC</Company>
 	<Copyright>© Runneth Over Studio, LLC</Copyright>
 	<PackageId>RunnethOverStudio.GopherWoodEngine</PackageId>
 	<PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -17,9 +19,13 @@
 	<PackageIcon>package-icon.png</PackageIcon>
 	<PackageProjectUrl>https://github.com/Runneth-Over-Studio/GopherWoodEngine</PackageProjectUrl>
 	<RepositoryUrl>https://github.com/Runneth-Over-Studio/GopherWoodEngine</RepositoryUrl>
+	<RepositoryType>git</RepositoryType>
 	<Description>Runneth Over Studio's in-house game engine.</Description>
-	<PackageTags>game engine</PackageTags>
+	<PackageTags>game engine graphics vulkan csharp</PackageTags>
+	<IncludeSymbols>true</IncludeSymbols>
+	<SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <Version>0.1.0</Version>
+	<PackageReleaseNotes>In-development / pre-alpha.</PackageReleaseNotes>
   </PropertyGroup>
 
   <!-- Let our test code access and verify the behavior of internal classes, methods, and properties. -->
@@ -44,6 +50,10 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.6" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.6" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.6" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Silk.NET" Version="2.22.0" />
     <PackageReference Include="Silk.NET.Vulkan.Extensions.EXT" Version="2.22.0" />
   </ItemGroup>
