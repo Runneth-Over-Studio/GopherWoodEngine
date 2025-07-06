@@ -135,6 +135,8 @@ public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
         //      ref: https://dotnet.github.io/docfx/reference/docfx-json-reference.html#predefined-metadata
         //      ref: https://code-maze.com/docfx-generating-source-code-documentation/
         //      ref: https://youtu.be/Sz1lCeedcPI?si=I0YHUhgI0ZKjO2cq
+        //      ref: https://stackoverflow.com/questions/36066279/how-can-i-customize-docfx-documentation-themes-or-templates
+        //      ref: https://www.cazzulino.com/customize-docfx.html
 
         return docfxConfig;
     }
