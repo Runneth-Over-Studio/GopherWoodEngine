@@ -276,9 +276,6 @@ internal unsafe class VulkanPipeline : IDisposable
     // Read shader modules (SPV files) that were built and embedded into the application.
     private static byte[] GetEmbeddedShaderBytes(string filename)
     {
-        //TODO: Right now have to build twice. First to build the shaders, then again for them to actually be available.
-        //  But going to change how shaders are built in the future, so this is fine for now.
-
         Assembly assembly = Assembly.GetExecutingAssembly();
 
         string? resourceName = assembly.GetManifestResourceNames().FirstOrDefault(s => s.EndsWith(filename))

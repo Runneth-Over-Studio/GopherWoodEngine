@@ -42,38 +42,14 @@ public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
         // Create docfx images directory and copy project images to it.
         CopyDocfxImages(context, workspaceDirectoryPath);
 
-        // Read the default docfx.json
+        // Read the default docfx.json and customize it as necessary.
         string contextToConfigPath = context.RuntimeOutputDirectory + context.Directory("Docs/docfx.json");
-        await using FileStream readStream = File.OpenRead(contextToConfigPath);
-        DocfxRoot? docfxRoot = await JsonSerializer.DeserializeAsync<DocfxRoot>(readStream, context.SerializerOptions);
-        DocfxSrc? docfxSrc = docfxRoot?.Metadata?.FirstOrDefault()?.Src?.FirstOrDefault();
-        DocfxGlobalMetadata? globalMetadata = docfxRoot?.Build?.GlobalMetadata;
-        if (docfxSrc == null || globalMetadata == null)
-        {
-            context.Log.Error("Failed to read & update default docfx.json file.");
-            return;
-        }
-        readStream.Dispose();
+        DocfxRoot docfxConfig = await CustomizeDocfxConfigAsync(context, contextToConfigPath);
 
-        // Update the docfx config.
-        docfxSrc.Src = "../"; // Glob patterns in docfx currently does not support crawling files outside the directory containing docfx.json. Use the metadata.src.src property.
-        docfxSrc.Files = [$"{context.PublishedProjectName}.dll"]; // When the file extension is .dll or .exe, docfx produces API docs by reflecting the assembly and the side-by-side XML documentation file.
-        globalMetadata.AppTitle = "Gopher Wood Engine"; // Used in the generated HTML title tag.
-        globalMetadata.AppName = "Gopher Wood Engine"; // Used in the generated HTML header.
-        globalMetadata.AppFaviconPath = "./images/favicon.ico";
-        globalMetadata.AppLogoPath = "./images/logo.png"; //TODO: Works but image is rendered too large in the header. Need to fix this in the docfx template.
-
-        //TODO: Need to further tweak the docfx source files to make the resulting html docs our own.
-        //      ref: https://dotnet.github.io/docfx/docs/basic-concepts.html
-        //      ref: https://dotnet.github.io/docfx/reference/docfx-json-reference.html
-        //      ref: https://dotnet.github.io/docfx/reference/docfx-json-reference.html#predefined-metadata
-        //      ref: https://code-maze.com/docfx-generating-source-code-documentation/
-        //      ref: https://youtu.be/Sz1lCeedcPI?si=I0YHUhgI0ZKjO2cq
-
-        // Overwrite docfx.json file with the updated values.
+        // Overwrite docfx.json file with the customized configuration.
         await using (FileStream writeStream = File.Create(contextToConfigPath))
         {
-            await JsonSerializer.SerializeAsync(writeStream, docfxRoot, context.SerializerOptions);
+            await JsonSerializer.SerializeAsync(writeStream, docfxConfig, context.SerializerOptions);
         }
 
         // Generate documentation HTML.
@@ -130,5 +106,36 @@ public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
             System.IO.Path.Combine(releaseContentDirectoryPath.FullPath, "favicon.ico"),
             System.IO.Path.Combine(docfxImageDirectoryPath.FullPath, "favicon.ico")
         );
+    }
+
+    private static async Task<DocfxRoot> CustomizeDocfxConfigAsync(BuildContext context, string contextToConfigPath)
+    {
+        // Read the default docfx.json
+        await using FileStream readStream = File.OpenRead(contextToConfigPath);
+        DocfxRoot docfxConfig = await JsonSerializer.DeserializeAsync<DocfxRoot>(readStream, context.SerializerOptions) ?? throw new InvalidOperationException("Failed to read & update default docfx.json file.");
+        readStream.Dispose();
+
+        DocfxMetadata docfxMetadata = docfxConfig.Metadata?.FirstOrDefault() ?? new DocfxMetadata();
+        DocfxSrc docfxSrc = docfxConfig.Metadata?.FirstOrDefault()?.Src?.FirstOrDefault() ?? new DocfxSrc();
+        DocfxBuild docfxBuild = docfxConfig.Build ?? new DocfxBuild();
+        DocfxGlobalMetadata globalMetadata = docfxBuild.GlobalMetadata ?? new DocfxGlobalMetadata();
+
+        // Update the docfx config.
+        docfxMetadata.NoRestore = true; // Dedicated build task for running restore.
+        docfxSrc.Src = "../"; // Glob patterns in docfx currently does not support crawling files outside the directory containing docfx.json. Use the metadata.src.src property.
+        docfxSrc.Files = [$"{context.PublishedProjectName}.dll"]; // When the file extension is .dll or .exe, docfx produces API docs by reflecting the assembly and the side-by-side XML documentation file.
+        globalMetadata.AppTitle = "Gopher Wood Engine"; // Used in the generated HTML title tag.
+        globalMetadata.AppName = "Gopher Wood Engine"; // Used in the generated HTML header.
+        globalMetadata.AppFaviconPath = "./images/favicon.ico";
+        globalMetadata.AppLogoPath = "./images/logo.png"; //TODO: Works but image is rendered too large in the header. Need to fix this in the docfx template.
+
+        //TODO: Need to further tweak the docfx source files to make the resulting html docs our own.
+        //      ref: https://dotnet.github.io/docfx/docs/basic-concepts.html
+        //      ref: https://dotnet.github.io/docfx/reference/docfx-json-reference.html
+        //      ref: https://dotnet.github.io/docfx/reference/docfx-json-reference.html#predefined-metadata
+        //      ref: https://code-maze.com/docfx-generating-source-code-documentation/
+        //      ref: https://youtu.be/Sz1lCeedcPI?si=I0YHUhgI0ZKjO2cq
+
+        return docfxConfig;
     }
 }
