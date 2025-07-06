@@ -40,10 +40,11 @@
     <EmbeddedResource Include="**/*.spv" />
   </ItemGroup>
 
-  <!-- Include readme & icon files in the NuGet package so they're available to be used by the PackageReadmeFile & PackageIcon properties. -->
+  <!-- Include readme & image files in the NuGet package so they're available to be used by the PackageReadmeFile & PackageIcon properties. -->
   <ItemGroup>
 	<None Include="../../readme.md" Pack="true" PackagePath="readme.md" />
 	<None Include="../../content/package-icon.png" Pack="true" PackagePath="package-icon.png" />
+	<None Include="../../logo.png" Pack="true" PackagePath="logo.png" />
   </ItemGroup>
 
   <ItemGroup>
