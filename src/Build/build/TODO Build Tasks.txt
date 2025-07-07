@@ -1,15 +1,19 @@
 ﻿TODO: Build Tasks
 	☑ Clean - Deletes the Debug or Release directories in the project bin directories.
 	☑ Restore - Restores NuGet packages for the solution.
-		☑ Process Images - If release, processes images readme, NuGet package, and documentation.
+	☐ Security - Run a tool like dotnet list package --vulnerable or Snyk to check for known vulnerabilities in dependencies.
+		☑ Process Images - If release, processes images used by readme, NuGet package, and documentation.
 		☐ Version (if release, increment version number)
 		☑ Compile Shaders - Compiles the SPIR-V shader binaries that get embedded into runtime.
 			☑ Compile Projects
-				☐ Analyze (Possibilities: StyleCop, DupFinder, Roslyn Analyzers, InspectCode)
+				☐ Formatting/Linting
+				☐ Analysis (Possibilities: StyleCop, DupFinder, Roslyn Analyzers, InspectCode, dotnet-format, or SonarQube or similar for deeper analysis)
 				☑ Tests
-				☑ Documentation - Uses docfx, with previously processed images, to generate the API documentation.
+				☐ Changelog - If release, generate a changelog from the commit history or PRs (e.g., GitReleaseManager).
+				☑ Documentation - If release, uses docfx, with previously processed images, to generate the API documentation.
 				☑ Package - If release, generate the NuGet package for the runtime using previously processed images and project properties.
 				☐ Publish - When there is an editor project, and if release, create a deployable package. The runtime deploys as a NuGet package so publish is not needed for that.
+				☐ Signing - If release, sign editor for authenticity and integrity.
 				☐ Deploy - If release: 
 					- Serve API documentation.
 					- If NuGet package version changed, deploy to gallery and GitHub repo releases. 
