@@ -1,16 +1,15 @@
 ﻿TODO: Build Tasks
 	☑ Clean - Deletes the Debug or Release directories in the project bin directories.
 	☑ Restore - Restores the NuGet packages for the solution and checks for known vulnerabilities in dependencies.
+	☑ Linting - Applies style preferences and static analysis recommendations to projects.
 		☑ Process Images - If release, processes source logo image to be used in the readme, NuGet package, and documentation.
 		☐ Version (if release, increment version number)
 		☑ Compile Shaders - Compiles the SPIR-V shader binaries that get embedded into runtime.
 			☑ Compile Projects - Compiles all projects in the src directory, excluding the Build project.
-				☐ Formatting/Linting
-				☐ Analysis (Possibilities: StyleCop, DupFinder, Roslyn Analyzers, InspectCode, dotnet-format, or SonarQube or similar for deeper analysis)
 				☑ Tests - Runs unit tests for the runtime and editor projects, if present.
-					☑ Unit Tests - Runs unit tests for the runtime and editor projects.
-					☐ Integration Tests - Runs integration tests for the runtime and editor project.
-					☐ UI Tests - Runs UI tests for the editor project.
+					- Unit Tests - Runs unit tests for the runtime and editor projects.
+					- Integration Tests - Runs integration tests for the runtime and editor project.
+					- UI Tests - Runs UI tests for the editor project.
 				☐ Changelog - If release, generate a changelog from the commit history or PRs (e.g., GitReleaseManager).
 				☑ Documentation - If release, uses docfx, with previously processed images, to generate the API documentation.
 				☑ Package - If release, generates the NuGet package for the runtime using previously processed images and project properties.

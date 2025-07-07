@@ -29,7 +29,7 @@ internal class PhysicalDeviceIO : IPhysicalDeviceIO
             gamepadDevice.ButtonUp += (gamepad, button) => eventSystem.Publish(gamepad, new ButtonUpEventArgs(button));
         }
     }
-    
+
     private static void HookJoystickEvents(IEnumerable<IJoystick> joysticks, IEventSystem eventSystem)
     {
         foreach (IJoystick joysticksDevice in joysticks)
@@ -40,7 +40,7 @@ internal class PhysicalDeviceIO : IPhysicalDeviceIO
             joysticksDevice.ButtonUp += (joystick, button) => eventSystem.Publish(joystick, new ButtonUpEventArgs(button));
         }
     }
-    
+
     private static void HookKeyboardEvents(IEnumerable<IKeyboard> keyboards, IEventSystem eventSystem)
     {
         if (keyboards.Any())
@@ -51,7 +51,7 @@ internal class PhysicalDeviceIO : IPhysicalDeviceIO
             keyboardDevice.KeyChar += (keyboard, character) => eventSystem.Publish(keyboard, new KeyReceivedEventArgs(character));
         }
     }
-    
+
     private static void HookMouseEvents(IEnumerable<IMouse> mice, IEventSystem eventSystem)
     {
         if (mice.Any())

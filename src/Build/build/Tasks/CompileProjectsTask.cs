@@ -10,6 +10,7 @@ using System.Linq;
 namespace Build.Tasks;
 
 [TaskName("Compile Projects")]
+[IsDependentOn(typeof(LintingTask))]
 [IsDependentOn(typeof(ProcessImagesTask))]
 [IsDependentOn(typeof(CompileShadersTask))]
 [TaskDescription("Compiles all projects in the src directory, excluding the Build project.")]

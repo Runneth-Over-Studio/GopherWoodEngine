@@ -29,7 +29,7 @@ internal unsafe class VulkanSwapChain : IDisposable
 
     private readonly Vk _vk;
     private readonly Device _logicalDevice;
-    
+
     private bool _disposed = false;
 
     public VulkanSwapChain(Vk vk, Instance instance, VulkanSurface surface, VulkanDevices devices, Vector2D<int> framebufferSize)
@@ -70,7 +70,7 @@ internal unsafe class VulkanSwapChain : IDisposable
     {
         PresentModeKHR presentMode = ChoosePresentMode(swapChainSupport.PresentModes);
 
-        SwapchainCreateInfoKHR creatInfo = new()
+        SwapchainCreateInfoKHR createInfo = new()
         {
             SType = StructureType.SwapchainCreateInfoKhr,
             Surface = surface.SurfaceKHR,
@@ -87,7 +87,7 @@ internal unsafe class VulkanSwapChain : IDisposable
 
         if (indices.GraphicsIndex != indices.PresentIndex)
         {
-            creatInfo = creatInfo with
+            createInfo = createInfo with
             {
                 ImageSharingMode = SharingMode.Concurrent,
                 QueueFamilyIndexCount = 2,
@@ -96,10 +96,10 @@ internal unsafe class VulkanSwapChain : IDisposable
         }
         else
         {
-            creatInfo.ImageSharingMode = SharingMode.Exclusive;
+            createInfo.ImageSharingMode = SharingMode.Exclusive;
         }
 
-        creatInfo = creatInfo with
+        createInfo = createInfo with
         {
             PreTransform = swapChainSupport.Capabilities.CurrentTransform,
             CompositeAlpha = CompositeAlphaFlagsKHR.OpaqueBitKhr,
@@ -108,7 +108,7 @@ internal unsafe class VulkanSwapChain : IDisposable
             OldSwapchain = default
         };
 
-        if (KhrSwapChain.CreateSwapchain(devices.LogicalDevice, in creatInfo, null, out SwapchainKHR swapChain) != Result.Success)
+        if (KhrSwapChain.CreateSwapchain(devices.LogicalDevice, in createInfo, null, out SwapchainKHR swapChain) != Result.Success)
         {
             throw new Exception("Failed to create swap chain.");
         }

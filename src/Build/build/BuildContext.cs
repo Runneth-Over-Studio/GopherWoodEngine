@@ -23,7 +23,7 @@ public class BuildContext : FrostingContext
     public ConvertableDirectoryPath SourceDirectory { get; }
     public ConvertableDirectoryPath RuntimeDirectory { get; }
     public ConvertableDirectoryPath RuntimeOutputDirectory { get; }
-    
+
 
     public BuildContext(ICakeContext context) : base(context)
     {
