@@ -24,7 +24,7 @@ During initial development the version will be at 0.1.0. Once a usable API is re
 - The engine renderer requires the [Vulkan SDK](https://www.lunarg.com/vulkan-sdk/), which provides validation layers and command-line tools for shader compilation. 
 	- The 'VULKAN_SDK' environment variable expected to be set during installation and is required by the build.
 - The Build project must be run at least once prior to launching other projects to ensure necessary shaders are compiled and embedded into the engine runtime.
-	- The Build project uses the [Cake](https://cakebuild.net/) (C# Make) as the build orchestrator and can be launched from your IDE or via script.
+	- The Build project uses [Cake](https://cakebuild.net/) (C# Make) as the build orchestrator and can be launched from your IDE or via script.
 
 		- On OSX/Linux run:
 		```bash
