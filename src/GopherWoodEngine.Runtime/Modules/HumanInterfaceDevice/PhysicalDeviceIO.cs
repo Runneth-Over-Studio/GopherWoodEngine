@@ -4,7 +4,7 @@ using Silk.NET.Input;
 
 namespace GopherWoodEngine.Runtime.Modules;
 
-internal class PhysicalDeviceIO : IPhysicalDeviceIO
+internal sealed class PhysicalDeviceIO : IPhysicalDeviceIO
 {
     public IInputContext InputContext { get; }
 

@@ -7,7 +7,7 @@ using Device = Silk.NET.Vulkan.Device;
 
 namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submodules;
 
-internal unsafe class VulkanSwapChain : IDisposable
+internal unsafe sealed class VulkanSwapChain : IDisposable
 {
     // Basic purpose is to ensure that the image that we're currently rendering to is different from the one that is currently on the screen. 
     // This is important to make sure that only complete images are shown.
@@ -207,7 +207,7 @@ internal unsafe class VulkanSwapChain : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    protected virtual void Dispose(bool disposing)
+    internal void Dispose(bool disposing)
     {
         if (!_disposed)
         {

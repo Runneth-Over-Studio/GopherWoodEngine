@@ -7,7 +7,7 @@ using System.Linq;
 namespace GopherWoodEngine.Runtime.Modules;
 
 // Note: If we ever start to see GC pressure or performance issues, we may want to consider a more involved solution, like Disruptor-net.
-internal class EventSystem(ILogger<IEventSystem> logger) : IEventSystem
+internal sealed class EventSystem(ILogger<IEventSystem> logger) : IEventSystem
 {
     private readonly ConcurrentDictionary<Type, ImmutableList<Delegate>> _handlers = new();
     private readonly ILogger<IEventSystem> _logger = logger;
@@ -73,7 +73,7 @@ internal class EventSystem(ILogger<IEventSystem> logger) : IEventSystem
         GC.SuppressFinalize(this);
     }
 
-    protected virtual void Dispose(bool disposing)
+    internal void Dispose(bool disposing)
     {
         if (!_disposed)
         {

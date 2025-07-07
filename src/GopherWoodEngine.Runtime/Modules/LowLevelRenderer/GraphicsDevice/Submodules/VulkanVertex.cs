@@ -7,7 +7,7 @@ using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submodules;
 
-internal unsafe class VulkanVertex : IDisposable
+internal unsafe sealed class VulkanVertex : IDisposable
 {
     public Buffer Buffer { get; }
     public Vertex[] Vertices { get; }
@@ -159,7 +159,7 @@ internal unsafe class VulkanVertex : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    protected virtual void Dispose(bool disposing)
+    internal void Dispose(bool disposing)
     {
         if (!_disposed)
         {

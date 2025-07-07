@@ -9,7 +9,7 @@ using Device = Silk.NET.Vulkan.Device;
 
 namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submodules;
 
-internal unsafe class VulkanPipeline : IDisposable
+internal unsafe sealed class VulkanPipeline : IDisposable
 {
     // Specifies how many color and depth buffers there will be, how many samples to use for each of them 
     // and how their contents should be handled throughout the rendering operations.
@@ -296,7 +296,7 @@ internal unsafe class VulkanPipeline : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    protected virtual void Dispose(bool disposing)
+    internal void Dispose(bool disposing)
     {
         if (!_disposed)
         {

@@ -7,7 +7,7 @@ using System.Text.Json;
 
 namespace Build;
 
-public class BuildContext : FrostingContext
+public sealed class BuildContext : FrostingContext
 {
     public enum BuildConfigurations
     {

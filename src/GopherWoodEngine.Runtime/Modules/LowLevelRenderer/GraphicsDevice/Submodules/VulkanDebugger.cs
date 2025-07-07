@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 
 namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submodules;
 
-internal unsafe class VulkanDebugger : IDisposable
+internal unsafe sealed class VulkanDebugger : IDisposable
 {
     // Represents a debug messenger that is specific to our Vulkan instance and its layers, that receives messages from the Vulkan API.
     internal DebugUtilsMessengerEXT? Messenger { get; }
@@ -129,7 +129,7 @@ internal unsafe class VulkanDebugger : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    protected virtual void Dispose(bool disposing)
+    internal void Dispose(bool disposing)
     {
         if (!_disposed)
         {

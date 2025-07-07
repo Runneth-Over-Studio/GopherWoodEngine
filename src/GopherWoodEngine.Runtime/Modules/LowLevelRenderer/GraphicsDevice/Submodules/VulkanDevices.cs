@@ -10,7 +10,7 @@ using Device = Silk.NET.Vulkan.Device;
 
 namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submodules;
 
-internal unsafe class VulkanDevices : IDisposable
+internal unsafe sealed class VulkanDevices : IDisposable
 {
     // Represents a physical device (GPU) that supports Vulkan as well as other defined features.
     internal PhysicalDevice PhysicalDevice { get; }
@@ -234,7 +234,7 @@ internal unsafe class VulkanDevices : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    protected virtual void Dispose(bool disposing)
+    internal void Dispose(bool disposing)
     {
         if (!_disposed)
         {

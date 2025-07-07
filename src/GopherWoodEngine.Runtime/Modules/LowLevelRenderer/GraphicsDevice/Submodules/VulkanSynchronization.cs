@@ -4,7 +4,7 @@ using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submodules;
 
-internal unsafe class VulkanSynchronization : IDisposable
+internal unsafe sealed class VulkanSynchronization : IDisposable
 {
     private const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -278,7 +278,7 @@ internal unsafe class VulkanSynchronization : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    protected virtual void Dispose(bool disposing)
+    internal void Dispose(bool disposing)
     {
         if (!_disposed)
         {

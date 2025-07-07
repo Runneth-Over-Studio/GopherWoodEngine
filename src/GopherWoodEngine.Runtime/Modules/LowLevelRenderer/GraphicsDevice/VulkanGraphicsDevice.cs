@@ -15,7 +15,7 @@ using System.Runtime.InteropServices;
 
 namespace GopherWoodEngine.Runtime.Modules;
 
-internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
+internal unsafe sealed class VulkanGraphicsDevice : IGraphicsDevice
 {
     private const uint VK_VERSION_MAJOR = 1;
     private const uint VK_VERSION_MINOR = 3;
@@ -193,7 +193,7 @@ internal unsafe class VulkanGraphicsDevice : IGraphicsDevice
         GC.SuppressFinalize(this);
     }
 
-    protected virtual void Dispose(bool disposing)
+    internal void Dispose(bool disposing)
     {
         if (!_disposed)
         {

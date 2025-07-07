@@ -10,7 +10,7 @@ namespace Build.Tasks;
 [IsDependentOn(typeof(TestsTask))]
 [IsDependentOn(typeof(DocumentationTask))]
 [IsDependentOn(typeof(PackageTask))]
-public class DefaultTask : FrostingTask
+public sealed class DefaultTask : FrostingTask
 {
     public override void Run(ICakeContext context)
     {

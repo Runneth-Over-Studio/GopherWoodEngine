@@ -6,7 +6,7 @@ using System;
 
 namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submodules;
 
-internal unsafe class VulkanSurface : IDisposable
+internal unsafe sealed class VulkanSurface : IDisposable
 {
     // Represents an abstract type of surface to present rendered images to.
     internal SurfaceKHR SurfaceKHR { get { return _surfaceKHR; } }
@@ -105,7 +105,7 @@ internal unsafe class VulkanSurface : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    protected virtual void Dispose(bool disposing)
+    internal void Dispose(bool disposing)
     {
         if (!_disposed)
         {
