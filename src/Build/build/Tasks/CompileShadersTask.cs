@@ -12,6 +12,7 @@ namespace Build.Tasks;
 
 [TaskName("Compile Shaders")]
 [IsDependentOn(typeof(RestoreTask))]
+[TaskDescription("Compiles the SPIR-V shader binaries that get embedded into the runtime.")]
 public sealed class CompileShadersTask : FrostingTask<BuildContext>
 {
     private const string ARGS_FORMAT = "\"{0}\" -o \"{1}\"";

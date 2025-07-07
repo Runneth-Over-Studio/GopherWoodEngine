@@ -15,6 +15,7 @@ namespace Build.Tasks;
 
 [TaskName("Documentation")]
 [IsDependentOn(typeof(CompileProjectsTask))]
+[TaskDescription("Uses docfx, with previously processed images, to generate the API documentation.")]
 public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
 {
     public override bool ShouldRun(BuildContext context)

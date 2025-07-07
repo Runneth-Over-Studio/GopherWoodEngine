@@ -17,6 +17,7 @@ namespace Build.Tasks;
 
 [TaskName("Process Images")]
 [IsDependentOn(typeof(RestoreTask))]
+[TaskDescription("Processes source logo image to be used in the readme, NuGet package, and documentation.")]
 public sealed class ProcessImagesTask : AsyncFrostingTask<BuildContext>
 {
     public override bool ShouldRun(BuildContext context)

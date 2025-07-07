@@ -7,6 +7,7 @@ using System;
 namespace Build.Tasks;
 
 [TaskName("Clean")]
+[TaskDescription("Deletes the Debug or Release directories in the project bin directories.")]
 public sealed class CleanTask : FrostingTask<BuildContext>
 {
     public override void Run(BuildContext context)

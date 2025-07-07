@@ -8,6 +8,7 @@ namespace Build.Tasks;
 
 [TaskName("Package")]
 [IsDependentOn(typeof(CompileProjectsTask))]
+[TaskDescription("Generates the NuGet package for the runtime using previously processed images and project properties.")]
 public sealed class PackageTask : FrostingTask<BuildContext>
 {
     public override bool ShouldRun(BuildContext context)

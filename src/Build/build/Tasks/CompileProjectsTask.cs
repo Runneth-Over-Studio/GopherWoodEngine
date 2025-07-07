@@ -12,6 +12,7 @@ namespace Build.Tasks;
 [TaskName("Compile Projects")]
 [IsDependentOn(typeof(ProcessImagesTask))]
 [IsDependentOn(typeof(CompileShadersTask))]
+[TaskDescription("Compiles all projects in the src directory, excluding the Build project.")]
 public sealed class CompileProjectsTask : FrostingTask<BuildContext>
 {
     public override void Run(BuildContext context)
