@@ -30,8 +30,13 @@ During initial development the version will be at 0.1.0. Once a usable API is re
 		```bash
 		build.sh
 		```
- 
+
 		- On Windows PowerShell run:
 		```powershell
 		./build.ps1
 		```
+
+<!-- ## Getting Started -->
+<!-- ## Usage -->
+<!-- ## Project Structure -->
+<!-- ## Acknowledgments -->
