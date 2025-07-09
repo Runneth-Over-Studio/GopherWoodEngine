@@ -13,12 +13,12 @@ internal unsafe sealed class VulkanPresenter : IDisposable
 
     private readonly VulkanSurface _surface;
     private readonly VulkanDevices _devices;
+    private readonly VulkanSynchronization _sync;
     private readonly IWindow _window;
     private readonly Vk _vk;
     private readonly Instance _instance;
     private VulkanSwapChain _swapChain;
     private VulkanPipeline _pipeline;
-    private VulkanSynchronization _sync;
     private int _currentFrame = 0;
     private bool _frameBufferResized = false;
     private bool _disposed = false;

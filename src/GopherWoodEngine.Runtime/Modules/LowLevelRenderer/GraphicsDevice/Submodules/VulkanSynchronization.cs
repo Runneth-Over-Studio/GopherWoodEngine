@@ -9,7 +9,7 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
     private const int MAX_FRAMES_IN_FLIGHT = 2;
 
     private readonly CommandPool _commandPool;
-    private readonly VulkanVertex _vertex;
+    private readonly VulkanBuffers _buffers;
     private readonly Semaphore[] _imageAvailableSemaphores;
     private readonly Semaphore[] _renderFinishedSemaphores;
     private readonly Fence[] _inFlightFences;
@@ -26,8 +26,8 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
         _logicalDevice = devices.LogicalDevice;
         _framebuffers = CreateFramebuffers(vk, _logicalDevice, swapChain, pipeline.RenderPass);
         _commandPool = CreateCommandPool(vk, _logicalDevice, queueFamilyGraphicsIndex);
-        _vertex = new VulkanVertex(vk, devices, _commandPool);
-        _commandBuffers = CreateCommandBuffers(vk, _commandPool, _vertex, _logicalDevice, swapChain.Extent, pipeline, _framebuffers);
+        _buffers = new VulkanBuffers(vk, devices, _commandPool);
+        _commandBuffers = CreateCommandBuffers(vk, _commandPool, _buffers, _logicalDevice, swapChain.Extent, pipeline, _framebuffers);
         _imageAvailableSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];
         _renderFinishedSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];
         _inFlightFences = new Fence[MAX_FRAMES_IN_FLIGHT];
@@ -121,7 +121,7 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
         }
 
         _framebuffers = CreateFramebuffers(_vk, _logicalDevice, swapChain, pipeline.RenderPass);
-        _commandBuffers = CreateCommandBuffers(_vk, _commandPool, _vertex, _logicalDevice, swapChain.Extent, pipeline, _framebuffers);
+        _commandBuffers = CreateCommandBuffers(_vk, _commandPool, _buffers, _logicalDevice, swapChain.Extent, pipeline, _framebuffers);
         _imagesInFlight = new Fence[swapChain.Images.Length];
     }
 
@@ -195,7 +195,7 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
         return commandPool;
     }
 
-    private static CommandBuffer[] CreateCommandBuffers(Vk vk, CommandPool commandPool, VulkanVertex vertex, Device logicalDevice, Extent2D swapChainExtend, VulkanPipeline pipeline, Framebuffer[] framebuffers)
+    private static CommandBuffer[] CreateCommandBuffers(Vk vk, CommandPool commandPool, VulkanBuffers buffers, Device logicalDevice, Extent2D swapChainExtend, VulkanPipeline pipeline, Framebuffer[] framebuffers)
     {
         CommandBuffer[] commandBuffers = new CommandBuffer[framebuffers.Length];
 
@@ -250,7 +250,7 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
             vk.CmdBeginRenderPass(commandBuffers[i], &renderPassInfo, SubpassContents.Inline);
             vk.CmdBindPipeline(commandBuffers[i], PipelineBindPoint.Graphics, pipeline.GraphicsPipeline);
 
-            Buffer[] vertexBuffers = [vertex.Buffer];
+            Buffer[] vertexBuffers = [buffers.VertexBuffer];
             ulong[] offsets = [0];
 
             fixed (ulong* offsetsPtr = offsets)
@@ -259,8 +259,8 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
                 vk.CmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffersPtr, offsetsPtr);
             }
 
-            vk.CmdDraw(commandBuffers[i], (uint)vertex.Vertices.Length, 1, 0, 0);
-
+            vk.CmdBindIndexBuffer(commandBuffers[i], buffers.IndexBuffer, 0, IndexType.Uint16);
+            vk.CmdDrawIndexed(commandBuffers[i], (uint)buffers.Indices.Length, 1, 0, 0, 0);
             vk.CmdEndRenderPass(commandBuffers[i]);
 
             if (vk.EndCommandBuffer(commandBuffers[i]) != Result.Success)
@@ -296,7 +296,7 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
                     _vk.FreeCommandBuffers(_logicalDevice, _commandPool, (uint)_commandBuffers.Length, commandBuffersPtr);
                 }
 
-                _vertex.Dispose();
+                _buffers.Dispose();
                 _vk.DestroyCommandPool(_logicalDevice, _commandPool, null);
 
                 foreach (Framebuffer framebuffer in _framebuffers)

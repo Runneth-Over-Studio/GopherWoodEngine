@@ -7,18 +7,21 @@ using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submodules;
 
-internal unsafe sealed class VulkanVertex : IDisposable
+internal unsafe sealed class VulkanBuffers : IDisposable
 {
-    public Buffer Buffer { get; }
+    public Buffer VertexBuffer { get; }
+    public Buffer IndexBuffer { get; }
     public Vertex[] Vertices { get; }
+    public ushort[] Indices { get; }
 
     private readonly DeviceMemory _vertexBufferMemory;
+    private readonly DeviceMemory _indexBufferMemory;
     private readonly Vk _vk;
     private readonly VulkanDevices _devices;
     private readonly CommandPool _commandPool;
     private bool _disposed = false;
 
-    public VulkanVertex(Vk vk, VulkanDevices devices, CommandPool commandPool)
+    public VulkanBuffers(Vk vk, VulkanDevices devices, CommandPool commandPool)
     {
         _vk = vk;
         _devices = devices;
@@ -26,38 +29,42 @@ internal unsafe sealed class VulkanVertex : IDisposable
 
         Vertices =
         [
-            new Vertex { Position = new Vector2D<float>(0.0f,-0.5f), Color = new Vector3D<float>(1.0f, 0.0f, 0.0f) },
-            new Vertex { Position = new Vector2D<float>(0.5f,0.5f), Color = new Vector3D<float>(0.0f, 1.0f, 0.0f) },
-            new Vertex { Position = new Vector2D<float>(-0.5f,0.5f), Color = new Vector3D<float>(0.0f, 0.0f, 1.0f) }
+            new Vertex { Position = new Vector2D<float>(-0.5f,-0.5f), Color = new Vector3D<float>(1.0f, 0.0f, 0.0f) },
+            new Vertex { Position = new Vector2D<float>(0.5f,-0.5f), Color = new Vector3D<float>(0.0f, 1.0f, 0.0f) },
+            new Vertex { Position = new Vector2D<float>(0.5f,0.5f), Color = new Vector3D<float>(0.0f, 0.0f, 1.0f) },
+            new Vertex { Position = new Vector2D<float>(-0.5f,0.5f), Color = new Vector3D<float>(1.0f, 1.0f, 1.0f) }
         ];
 
-        (Buffer, _vertexBufferMemory) = CreateVertexBuffer();
+        Indices = [0, 1, 2, 2, 3, 0];
+
+        (VertexBuffer, _vertexBufferMemory) = CreateBufferWithMemory(Vertices, BufferUsageFlags.TransferDstBit | BufferUsageFlags.VertexBufferBit);
+        (IndexBuffer, _indexBufferMemory) = CreateBufferWithMemory(Indices, BufferUsageFlags.TransferDstBit | BufferUsageFlags.IndexBufferBit);
     }
 
-    private (Buffer, DeviceMemory) CreateVertexBuffer()
+    private (Buffer, DeviceMemory) CreateBufferWithMemory<T>(T[] dataSource, BufferUsageFlags usage)
     {
-        ulong bufferSize = (ulong)(sizeof(Vertex) * Vertices.Length);
+        ulong bufferSize = (ulong)(Unsafe.SizeOf<T>() * dataSource.Length);
 
-        Buffer stagingBuffer = CreateBuffer(bufferSize, BufferUsageFlags.TransferSrcBit);
-        DeviceMemory stagingBufferMemory = CreateMemory(MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref stagingBuffer);
+        Buffer stagingBuffer = CreateBuffer(_vk, _devices.LogicalDevice, bufferSize, BufferUsageFlags.TransferSrcBit);
+        DeviceMemory stagingBufferMemory = CreateMemory(_vk, _devices, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref stagingBuffer);
 
         void* data;
         _vk.MapMemory(_devices.LogicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
-        Vertices.AsSpan().CopyTo(new Span<Vertex>(data, Vertices.Length));
+        dataSource.AsSpan().CopyTo(new Span<T>(data, dataSource.Length));
         _vk.UnmapMemory(_devices.LogicalDevice, stagingBufferMemory);
 
-        Buffer vertexBuffer = CreateBuffer(bufferSize, BufferUsageFlags.TransferDstBit | BufferUsageFlags.VertexBufferBit);
-        DeviceMemory vertexBufferMemory = CreateMemory(MemoryPropertyFlags.DeviceLocalBit, ref vertexBuffer);
+        Buffer buffer = CreateBuffer(_vk, _devices.LogicalDevice, bufferSize, usage);
+        DeviceMemory bufferMemory = CreateMemory(_vk, _devices, MemoryPropertyFlags.DeviceLocalBit, ref buffer);
 
-        CopyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+        CopyBuffer(_vk, _devices, _commandPool, stagingBuffer, buffer, bufferSize);
 
         _vk.DestroyBuffer(_devices.LogicalDevice, stagingBuffer, null);
         _vk.FreeMemory(_devices.LogicalDevice, stagingBufferMemory, null);
 
-        return (vertexBuffer, vertexBufferMemory);
+        return (buffer, bufferMemory);
     }
 
-    private Buffer CreateBuffer(ulong bufferSize, BufferUsageFlags usage)
+    private static Buffer CreateBuffer(Vk vk, Device logicalDevice, ulong bufferSize, BufferUsageFlags usage)
     {
         BufferCreateInfo bufferInfo = new()
         {
@@ -67,7 +74,7 @@ internal unsafe sealed class VulkanVertex : IDisposable
             SharingMode = SharingMode.Exclusive
         };
 
-        if (_vk.CreateBuffer(_devices.LogicalDevice, in bufferInfo, null, out Buffer vertexBuffer) != Result.Success)
+        if (vk.CreateBuffer(logicalDevice, in bufferInfo, null, out Buffer vertexBuffer) != Result.Success)
         {
             throw new Exception("Failed to create vertex buffer.");
         }
@@ -75,38 +82,38 @@ internal unsafe sealed class VulkanVertex : IDisposable
         return vertexBuffer;
     }
 
-    private DeviceMemory CreateMemory(MemoryPropertyFlags properties, ref Buffer buffer)
+    private static DeviceMemory CreateMemory(Vk vk, VulkanDevices devices, MemoryPropertyFlags properties, ref Buffer buffer)
     {
-        _vk.GetBufferMemoryRequirements(_devices.LogicalDevice, buffer, out MemoryRequirements memRequirements);
+        vk.GetBufferMemoryRequirements(devices.LogicalDevice, buffer, out MemoryRequirements memRequirements);
 
         MemoryAllocateInfo allocateInfo = new()
         {
             SType = StructureType.MemoryAllocateInfo,
             AllocationSize = memRequirements.Size,
-            MemoryTypeIndex = FindMemoryType(memRequirements.MemoryTypeBits, properties)
+            MemoryTypeIndex = FindMemoryType(vk, devices.PhysicalDevice, memRequirements.MemoryTypeBits, properties)
         };
 
-        if (_vk.AllocateMemory(_devices.LogicalDevice, in allocateInfo, null, out DeviceMemory bufferMemory) != Result.Success)
+        if (vk.AllocateMemory(devices.LogicalDevice, in allocateInfo, null, out DeviceMemory bufferMemory) != Result.Success)
         {
             throw new Exception("Failed to allocate vertex buffer memory.");
         }
 
-        _vk.BindBufferMemory(_devices.LogicalDevice, buffer, bufferMemory, 0);
+        vk.BindBufferMemory(devices.LogicalDevice, buffer, bufferMemory, 0);
 
         return bufferMemory;
     }
 
-    private void CopyBuffer(Buffer srcBuffer, Buffer dstBuffer, ulong size)
+    private static void CopyBuffer(Vk vk, VulkanDevices devices, CommandPool commandPool, Buffer srcBuffer, Buffer dstBuffer, ulong size)
     {
         CommandBufferAllocateInfo allocateInfo = new()
         {
             SType = StructureType.CommandBufferAllocateInfo,
             Level = CommandBufferLevel.Primary,
-            CommandPool = _commandPool,
+            CommandPool = commandPool,
             CommandBufferCount = 1
         };
 
-        _vk.AllocateCommandBuffers(_devices.LogicalDevice, in allocateInfo, out CommandBuffer commandBuffer);
+        vk.AllocateCommandBuffers(devices.LogicalDevice, in allocateInfo, out CommandBuffer commandBuffer);
 
         CommandBufferBeginInfo beginInfo = new()
         {
@@ -114,16 +121,16 @@ internal unsafe sealed class VulkanVertex : IDisposable
             Flags = CommandBufferUsageFlags.OneTimeSubmitBit
         };
 
-        _vk.BeginCommandBuffer(commandBuffer, in beginInfo);
+        vk.BeginCommandBuffer(commandBuffer, in beginInfo);
 
         BufferCopy copyRegion = new()
         {
             Size = size
         };
 
-        _vk.CmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, in copyRegion);
+        vk.CmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, in copyRegion);
 
-        _vk.EndCommandBuffer(commandBuffer);
+        vk.EndCommandBuffer(commandBuffer);
 
         SubmitInfo submitInfo = new()
         {
@@ -132,15 +139,15 @@ internal unsafe sealed class VulkanVertex : IDisposable
             PCommandBuffers = &commandBuffer
         };
 
-        _vk.QueueSubmit(_devices.GraphicsQueue, 1, in submitInfo, default);
-        _vk.QueueWaitIdle(_devices.GraphicsQueue);
+        vk.QueueSubmit(devices.GraphicsQueue, 1, in submitInfo, default);
+        vk.QueueWaitIdle(devices.GraphicsQueue);
 
-        _vk.FreeCommandBuffers(_devices.LogicalDevice, _commandPool, 1, in commandBuffer);
+        vk.FreeCommandBuffers(devices.LogicalDevice, commandPool, 1, in commandBuffer);
     }
 
-    private uint FindMemoryType(uint typeFilter, MemoryPropertyFlags properties)
+    private static uint FindMemoryType(Vk vk, PhysicalDevice physicalDevice, uint typeFilter, MemoryPropertyFlags properties)
     {
-        _vk.GetPhysicalDeviceMemoryProperties(_devices.PhysicalDevice, out PhysicalDeviceMemoryProperties memProperties);
+        vk.GetPhysicalDeviceMemoryProperties(physicalDevice, out PhysicalDeviceMemoryProperties memProperties);
 
         for (int i = 0; i < memProperties.MemoryTypeCount; i++)
         {
@@ -165,7 +172,10 @@ internal unsafe sealed class VulkanVertex : IDisposable
         {
             if (disposing)
             {
-                _vk.DestroyBuffer(_devices.LogicalDevice, Buffer, null);
+                _vk.DestroyBuffer(_devices.LogicalDevice, IndexBuffer, null);
+                _vk.FreeMemory(_devices.LogicalDevice, _indexBufferMemory, null);
+
+                _vk.DestroyBuffer(_devices.LogicalDevice, VertexBuffer, null);
                 _vk.FreeMemory(_devices.LogicalDevice, _vertexBufferMemory, null);
             }
 
