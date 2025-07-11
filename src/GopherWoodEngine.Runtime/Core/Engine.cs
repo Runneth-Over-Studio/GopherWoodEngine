@@ -109,6 +109,8 @@ public class Engine : IDisposable
                 _graphicsDevice.Dispose();
 
                 _logger.LogDebug("Engine disposed.");
+
+                Serilog.Log.CloseAndFlush();
             }
 
             _disposed = true;

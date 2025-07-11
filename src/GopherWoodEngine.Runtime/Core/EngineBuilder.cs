@@ -1,6 +1,7 @@
 ﻿using GopherWoodEngine.Runtime.Modules;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Sinks.SystemConsole.Themes;
 using System;
 using System.Diagnostics;
 
@@ -31,22 +32,17 @@ internal static class EngineBuilder
     [Conditional("DEBUG")]
     private static void AddDebugLogging(this IServiceCollection services)
     {
-        services.AddLogging(builder =>
-        {
-            builder.SetMinimumLevel(LogLevel.Trace);
-            builder.AddSimpleConsole(options =>
-            {
-                options.IncludeScopes = true;
-                options.SingleLine = true;
-                options.TimestampFormat = "HH:mm:ss ";
-            });
-        });
+        Serilog.Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Verbose()
+            .WriteTo.Console(theme: AnsiConsoleTheme.Sixteen)
+            .CreateLogger();
+
+        services.AddLogging(configure => configure.AddSerilog(Serilog.Log.Logger));
     }
 
     [Conditional("RELEASE")]
     private static void AddReleaseLogging(this IServiceCollection services)
     {
         services.AddLogging(); // No providers, but still registers ILogger<T>
-
     }
 }
