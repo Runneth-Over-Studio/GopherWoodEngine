@@ -22,7 +22,7 @@ public class Engine : IDisposable
     private readonly IGraphicsDevice _graphicsDevice;
     private readonly IPhysicalDeviceIO _physicalDeviceIO;
     private readonly ILogger<Engine> _logger;
-    private readonly Game _game;
+    private readonly GameBase _game;
     private bool _isRunning = true;
     private bool _isSuspended = false;
     private bool _disposed = false;
@@ -31,7 +31,7 @@ public class Engine : IDisposable
     /// Initializes a new instance of the <see cref="Engine"/> class, setting up the core services and event
     /// subscriptions required for the game engine.
     /// </summary>
-    public Engine(Game game)
+    public Engine(GameBase game)
     {
         _services = EngineBuilder.Build(game.EngineConfig);
         EventSystem = _services.GetRequiredService<IEventSystem>();

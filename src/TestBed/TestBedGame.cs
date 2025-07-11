@@ -2,6 +2,6 @@
 
 namespace TestBed;
 
-internal class TestBedGame(EngineConfig engineConfig) : Game(engineConfig)
+internal class TestBedGame(EngineConfig engineConfig) : GameBase(engineConfig)
 {
 }

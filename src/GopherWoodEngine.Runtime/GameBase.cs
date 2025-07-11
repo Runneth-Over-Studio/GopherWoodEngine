@@ -8,11 +8,11 @@ namespace GopherWoodEngine.Runtime;
 /// loop management, and lifecycle methods.
 /// </summary>
 /// <remarks>
-/// The <see cref="Game"/> class serves as the foundation for creating game applications using the Gopher
+/// The <see cref="GameBase"/> class serves as the foundation for creating game applications using the Gopher
 /// Wood Engine. Derived classes should override the virtual methods to implement specific game logic. 
 /// This class also implements <see cref="IDisposable"/> to ensure proper cleanup of resources.
 /// </remarks>
-public abstract class Game : IDisposable
+public abstract class GameBase : IDisposable
 {
     /// <summary>
     /// The configuration settings for the engine.
@@ -27,9 +27,9 @@ public abstract class Game : IDisposable
     private bool _disposed = false;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="Game"/> class with the specified engine configuration.
+    /// Initializes a new instance of the <see cref="GameBase"/> class with the specified engine configuration.
     /// </summary>
-    public Game(EngineConfig engineConfig)
+    public GameBase(EngineConfig engineConfig)
     {
         EngineConfig = engineConfig;
         Engine = new Engine(this);
