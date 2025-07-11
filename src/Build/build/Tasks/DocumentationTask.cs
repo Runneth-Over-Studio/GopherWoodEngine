@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using static Build.BuildContext;
 
 namespace Build.Tasks;
 
@@ -20,8 +21,7 @@ public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
 {
     public override bool ShouldRun(BuildContext context)
     {
-        //return context.Config == BuildConfigurations.Release;
-        return true;
+        return context.Config == BuildConfigurations.Release;
     }
 
     public override async Task RunAsync(BuildContext context)

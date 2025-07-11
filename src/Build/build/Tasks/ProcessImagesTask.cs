@@ -12,6 +12,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
+using static Build.BuildContext;
 
 namespace Build.Tasks;
 
@@ -22,8 +23,7 @@ public sealed class ProcessImagesTask : AsyncFrostingTask<BuildContext>
 {
     public override bool ShouldRun(BuildContext context)
     {
-        //return context.Config == BuildConfigurations.Release;
-        return true;
+        return context.Config == BuildConfigurations.Release;
     }
 
     public override async Task RunAsync(BuildContext context)
