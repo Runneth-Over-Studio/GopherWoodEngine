@@ -9,16 +9,15 @@ internal unsafe sealed class VulkanPresenter : IDisposable
 {
     private const int MAX_FRAMES_IN_FLIGHT = 2;
 
-    internal VulkanDevices Devices { get { return _devices; } }
+    internal VulkanDevices Devices { get; }
 
-    private readonly VulkanSurface _surface;
-    private readonly VulkanDevices _devices;
-    private readonly VulkanSynchronization _sync;
     private readonly IWindow _window;
     private readonly Vk _vk;
-    private readonly Instance _instance;
-    private VulkanSwapChain _swapChain;
-    private VulkanPipeline _pipeline;
+    private readonly VulkanSurface _surface;
+    private readonly VulkanSwapChain _swapChain;
+    private readonly DescriptorSetLayout _descriptorSetLayout;
+    private readonly VulkanPipeline _pipeline;
+    private readonly VulkanSynchronization _sync;
     private int _currentFrame = 0;
     private bool _frameBufferResized = false;
     private bool _disposed = false;
@@ -27,21 +26,24 @@ internal unsafe sealed class VulkanPresenter : IDisposable
     {
         _window = window;
         _vk = vk;
-        _instance = instance;
         _surface = new VulkanSurface(window, vk, instance);
-        _devices = new VulkanDevices(vk, instance, _surface, enableValidationLayers);
-        _swapChain = new VulkanSwapChain(vk, instance, _surface, _devices, window.FramebufferSize);
-        _pipeline = new VulkanPipeline(vk, _devices.LogicalDevice, _swapChain);
-        _sync = new VulkanSynchronization(vk, _devices, _swapChain, _pipeline, _devices.QueueFamilyIndices.GraphicsIndex);
+        Devices = new VulkanDevices(vk, instance, _surface, enableValidationLayers);
+        _swapChain = new VulkanSwapChain(vk, instance, _surface, Devices, window.FramebufferSize);
+        _descriptorSetLayout = CreateDescriptorSetLayout(_vk, Devices.LogicalDevice);
+        _pipeline = new VulkanPipeline(vk, Devices.LogicalDevice, _swapChain, _descriptorSetLayout);
+        _sync = new VulkanSynchronization(vk, Devices, _swapChain, _pipeline, Devices.QueueFamilyIndices.GraphicsIndex);
 
         _window.Resize += OnWindowResize;
     }
 
     internal void DrawFrame(double delta)
     {
-        bool presentSuccessful = _sync.Present(_devices.GraphicsQueue, _devices.PresentQueue, _swapChain, _currentFrame);
+        //Silk Window has timing information so we are skipping the time code.
+        float time = (float)_window.Time;
 
-        if (presentSuccessful || _frameBufferResized)
+        bool presentSuccessful = _sync.Present(time, Devices.GraphicsQueue, Devices.PresentQueue, _swapChain, _currentFrame);
+
+        if (!presentSuccessful || _frameBufferResized)
         {
             _frameBufferResized = false;
             ResetSwapChain();
@@ -60,20 +62,47 @@ internal unsafe sealed class VulkanPresenter : IDisposable
             _window.DoEvents();
         }
 
-        _vk.DeviceWaitIdle(_devices.LogicalDevice);
+        _vk.DeviceWaitIdle(Devices.LogicalDevice);
 
-        _pipeline.Dispose();
-        _swapChain.Dispose();
+        _sync.CleanUpSwapChain();
+        _pipeline.CleanUpSwapChain();
+        _swapChain.CleanUpSwapChain();
+        _sync.CleanUpBuffers();
 
-        _swapChain = new VulkanSwapChain(_vk, _instance, _surface, _devices, _window.FramebufferSize);
-        _pipeline = new VulkanPipeline(_vk, _devices.LogicalDevice, _swapChain);
-
-        _sync.Reset(_swapChain, _pipeline);
+        _swapChain.ResetSwapChain();
+        _pipeline.ResetSwapChain(_swapChain);
+        _sync.ResetBuffers();
     }
 
     private void OnWindowResize(Vector2D<int> obj)
     {
         _frameBufferResized = true;
+    }
+
+    private static DescriptorSetLayout CreateDescriptorSetLayout(Vk vk, Device logicalDevice)
+    {
+        DescriptorSetLayoutBinding uboLayoutBinding = new()
+        {
+            Binding = 0,
+            DescriptorCount = 1,
+            DescriptorType = DescriptorType.UniformBuffer,
+            PImmutableSamplers = null,
+            StageFlags = ShaderStageFlags.VertexBit
+        };
+
+        DescriptorSetLayoutCreateInfo layoutInfo = new()
+        {
+            SType = StructureType.DescriptorSetLayoutCreateInfo,
+            BindingCount = 1,
+            PBindings = &uboLayoutBinding
+        };
+
+        if (vk.CreateDescriptorSetLayout(logicalDevice, in layoutInfo, null, out DescriptorSetLayout descriptorSetLayout) != Result.Success)
+        {
+            throw new Exception("Failed to create descriptor set layout.");
+        }
+
+        return descriptorSetLayout;
     }
 
     public void Dispose()
@@ -92,8 +121,9 @@ internal unsafe sealed class VulkanPresenter : IDisposable
 
                 _sync.Dispose();
                 _pipeline.Dispose();
+                _vk.DestroyDescriptorSetLayout(Devices.LogicalDevice, _descriptorSetLayout, null);
                 _swapChain.Dispose();
-                _devices.Dispose();
+                Devices.Dispose();
                 _surface.Dispose();
             }
 

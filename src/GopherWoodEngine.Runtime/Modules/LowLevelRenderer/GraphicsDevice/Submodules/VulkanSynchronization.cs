@@ -1,5 +1,8 @@
-﻿using Silk.NET.Vulkan;
+﻿using Silk.NET.Maths;
+using Silk.NET.Vulkan;
 using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submodules;
@@ -8,14 +11,26 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
 {
     private const int MAX_FRAMES_IN_FLIGHT = 2;
 
+    private readonly Vk _vk;
+    private readonly VulkanDevices _devices;
+    private readonly VulkanSwapChain _swapChain;
+    private readonly VulkanPipeline _pipeline;
     private readonly CommandPool _commandPool;
-    private readonly VulkanBuffers _buffers;
+    private readonly DescriptorSetLayout _descriptorSetLayout;
+    private readonly Vertex[] _vertices;
+    private readonly ushort[] _indices;
+    private readonly Buffer _vertexBuffer;
+    private readonly DeviceMemory _vertexBufferMemory;
+    private readonly Buffer _indexBuffer;
+    private readonly DeviceMemory _indexBufferMemory;
     private readonly Semaphore[] _imageAvailableSemaphores;
     private readonly Semaphore[] _renderFinishedSemaphores;
     private readonly Fence[] _inFlightFences;
-    private readonly Vk _vk;
-    private readonly Device _logicalDevice;
     private Framebuffer[] _framebuffers;
+    private Buffer[] _uniformBuffers;
+    private DeviceMemory[] _uniformBuffersMemory;
+    private DescriptorPool _descriptorPool;
+    private DescriptorSet[] _descriptorSets;
     private CommandBuffer[] _commandBuffers;
     private Fence[] _imagesInFlight;
     private bool _disposed = false;
@@ -23,11 +38,32 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
     public VulkanSynchronization(Vk vk, VulkanDevices devices, VulkanSwapChain swapChain, VulkanPipeline pipeline, uint queueFamilyGraphicsIndex)
     {
         _vk = vk;
-        _logicalDevice = devices.LogicalDevice;
-        _framebuffers = CreateFramebuffers(vk, _logicalDevice, swapChain, pipeline.RenderPass);
-        _commandPool = CreateCommandPool(vk, _logicalDevice, queueFamilyGraphicsIndex);
-        _buffers = new VulkanBuffers(vk, devices, _commandPool);
-        _commandBuffers = CreateCommandBuffers(vk, _commandPool, _buffers, _logicalDevice, swapChain.Extent, pipeline, _framebuffers);
+        _devices = devices;
+        _swapChain = swapChain;
+        _pipeline = pipeline;
+
+        _framebuffers = CreateFramebuffers(vk, devices.LogicalDevice, swapChain, pipeline.RenderPass);
+        _commandPool = CreateCommandPool(vk, devices.LogicalDevice, queueFamilyGraphicsIndex);
+        _descriptorSetLayout = pipeline.DescriptorSetLayout;
+
+        _vertices =
+        [
+            new Vertex { Position = new Vector2D<float>(-0.5f,-0.5f), Color = new Vector3D<float>(1.0f, 0.0f, 0.0f) },
+            new Vertex { Position = new Vector2D<float>(0.5f,-0.5f), Color = new Vector3D<float>(0.0f, 1.0f, 0.0f) },
+            new Vertex { Position = new Vector2D<float>(0.5f,0.5f), Color = new Vector3D<float>(0.0f, 0.0f, 1.0f) },
+            new Vertex { Position = new Vector2D<float>(-0.5f,0.5f), Color = new Vector3D<float>(1.0f, 1.0f, 1.0f) }
+        ];
+
+        _indices = [0, 1, 2, 2, 3, 0];
+
+        (_vertexBuffer, _vertexBufferMemory) = CreateBufferWithMemory(_vertices, BufferUsageFlags.TransferDstBit | BufferUsageFlags.VertexBufferBit);
+        (_indexBuffer, _indexBufferMemory) = CreateBufferWithMemory(_indices, BufferUsageFlags.TransferDstBit | BufferUsageFlags.IndexBufferBit);
+        (_uniformBuffers, _uniformBuffersMemory) = CreateUniformBuffers();
+
+        _descriptorPool = CreateDescriptorPool(_vk, _devices.LogicalDevice, swapChain.Images.Length);
+        _descriptorSets = CreateDescriptorSets(_vk, _devices.LogicalDevice, swapChain.Images.Length, pipeline.DescriptorSetLayout, _uniformBuffers, _descriptorPool);
+
+        _commandBuffers = CreateCommandBuffers();
         _imageAvailableSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];
         _renderFinishedSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];
         _inFlightFences = new Fence[MAX_FRAMES_IN_FLIGHT];
@@ -36,12 +72,12 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
         SetSyncObjects();
     }
 
-    internal bool Present(Queue graphicsQueue, Queue presentQueue, VulkanSwapChain swapChain, int currentFrame)
+    internal bool Present(float windowTime, Queue graphicsQueue, Queue presentQueue, VulkanSwapChain swapChain, int currentFrame)
     {
-        _vk.WaitForFences(_logicalDevice, 1, in _inFlightFences[currentFrame], Vk.True, ulong.MaxValue);
+        _vk.WaitForFences(_devices.LogicalDevice, 1, in _inFlightFences[currentFrame], Vk.True, ulong.MaxValue);
 
         uint imageIndex = 0;
-        Result result = swapChain.KhrSwapChain.AcquireNextImage(_logicalDevice, swapChain.SwapChain, ulong.MaxValue, _imageAvailableSemaphores[currentFrame], default, ref imageIndex);
+        Result result = swapChain.KhrSwapChain.AcquireNextImage(_devices.LogicalDevice, swapChain.SwapChain, ulong.MaxValue, _imageAvailableSemaphores[currentFrame], default, ref imageIndex);
 
         if (result == Result.ErrorOutOfDateKhr)
         {
@@ -52,9 +88,11 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
             throw new Exception("Failed to acquire swap chain image.");
         }
 
+        UpdateUniformBuffer(windowTime, swapChain.Extent, imageIndex);
+
         if (_imagesInFlight![imageIndex].Handle != default)
         {
-            _vk.WaitForFences(_logicalDevice, 1, in _imagesInFlight[imageIndex], Vk.True, ulong.MaxValue);
+            _vk.WaitForFences(_devices.LogicalDevice, 1, in _imagesInFlight[imageIndex], Vk.True, ulong.MaxValue);
         }
         _imagesInFlight[imageIndex] = _inFlightFences[currentFrame];
 
@@ -75,7 +113,7 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
             PSignalSemaphores = signalSemaphores
         };
 
-        _vk.ResetFences(_logicalDevice, 1, in _inFlightFences[currentFrame]);
+        _vk.ResetFences(_devices.LogicalDevice, 1, in _inFlightFences[currentFrame]);
 
         if (_vk.QueueSubmit(graphicsQueue, 1, in submitInfo, _inFlightFences[currentFrame]) != Result.Success)
         {
@@ -108,21 +146,41 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
         return true;
     }
 
-    internal void Reset(VulkanSwapChain swapChain, VulkanPipeline pipeline)
+    internal void CleanUpSwapChain()
     {
-        fixed (CommandBuffer* commandBuffersPtr = _commandBuffers)
-        {
-            _vk.FreeCommandBuffers(_logicalDevice, _commandPool, (uint)_commandBuffers.Length, commandBuffersPtr);
-        }
-
         foreach (Framebuffer framebuffer in _framebuffers)
         {
-            _vk.DestroyFramebuffer(_logicalDevice, framebuffer, null);
+            _vk.DestroyFramebuffer(_devices.LogicalDevice, framebuffer, null);
         }
 
-        _framebuffers = CreateFramebuffers(_vk, _logicalDevice, swapChain, pipeline.RenderPass);
-        _commandBuffers = CreateCommandBuffers(_vk, _commandPool, _buffers, _logicalDevice, swapChain.Extent, pipeline, _framebuffers);
-        _imagesInFlight = new Fence[swapChain.Images.Length];
+        fixed (CommandBuffer* commandBuffersPtr = _commandBuffers)
+        {
+            _vk.FreeCommandBuffers(_devices.LogicalDevice, _commandPool, (uint)_commandBuffers.Length, commandBuffersPtr);
+        }
+    }
+
+    internal void CleanUpBuffers()
+    {
+        for (int i = 0; i < _swapChain.Images.Length; i++)
+        {
+            _vk.DestroyBuffer(_devices.LogicalDevice, _uniformBuffers[i], null);
+            _vk.FreeMemory(_devices.LogicalDevice, _uniformBuffersMemory[i], null);
+        }
+
+        _vk.DestroyDescriptorPool(_devices.LogicalDevice, _descriptorPool, null);
+    }
+
+    internal void ResetBuffers()
+    {
+        _framebuffers = CreateFramebuffers(_vk, _devices.LogicalDevice, _swapChain, _pipeline.RenderPass);
+
+        (_uniformBuffers, _uniformBuffersMemory) = CreateUniformBuffers();
+        _descriptorPool = CreateDescriptorPool(_vk, _devices.LogicalDevice, _swapChain.Images.Length);
+        _descriptorSets = CreateDescriptorSets(_vk, _devices.LogicalDevice, _swapChain.Images.Length, _descriptorSetLayout, _uniformBuffers, _descriptorPool);
+
+        _commandBuffers = CreateCommandBuffers();
+
+        _imagesInFlight = new Fence[_swapChain.Images.Length];
     }
 
     private void SetSyncObjects()
@@ -140,13 +198,321 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
 
         for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
-            if (_vk.CreateSemaphore(_logicalDevice, in semaphoreInfo, null, out _imageAvailableSemaphores[i]) != Result.Success ||
-                _vk.CreateSemaphore(_logicalDevice, in semaphoreInfo, null, out _renderFinishedSemaphores[i]) != Result.Success ||
-                _vk.CreateFence(_logicalDevice, in fenceInfo, null, out _inFlightFences[i]) != Result.Success)
+            if (_vk.CreateSemaphore(_devices.LogicalDevice, in semaphoreInfo, null, out _imageAvailableSemaphores[i]) != Result.Success ||
+                _vk.CreateSemaphore(_devices.LogicalDevice, in semaphoreInfo, null, out _renderFinishedSemaphores[i]) != Result.Success ||
+                _vk.CreateFence(_devices.LogicalDevice, in fenceInfo, null, out _inFlightFences[i]) != Result.Success)
             {
                 throw new Exception("Failed to create synchronization objects for a frame.");
             }
         }
+    }
+
+    private CommandBuffer[] CreateCommandBuffers()
+    {
+        CommandBuffer[] commandBuffers = new CommandBuffer[_framebuffers.Length];
+
+        CommandBufferAllocateInfo allocInfo = new()
+        {
+            SType = StructureType.CommandBufferAllocateInfo,
+            CommandPool = _commandPool,
+            Level = CommandBufferLevel.Primary,
+            CommandBufferCount = (uint)commandBuffers.Length
+        };
+
+        fixed (CommandBuffer* commandBuffersPtr = commandBuffers)
+        {
+            if (_vk.AllocateCommandBuffers(_devices.LogicalDevice, in allocInfo, commandBuffersPtr) != Result.Success)
+            {
+                throw new Exception("Failed to allocate command buffers.");
+            }
+        }
+
+        for (int i = 0; i < commandBuffers.Length; i++)
+        {
+            CommandBufferBeginInfo beginInfo = new()
+            {
+                SType = StructureType.CommandBufferBeginInfo
+            };
+
+            if (_vk.BeginCommandBuffer(commandBuffers[i], in beginInfo) != Result.Success)
+            {
+                throw new Exception("Failed to begin recording command buffer.");
+            }
+
+            RenderPassBeginInfo renderPassInfo = new()
+            {
+                SType = StructureType.RenderPassBeginInfo,
+                RenderPass = _pipeline.RenderPass,
+                Framebuffer = _framebuffers[i],
+                RenderArea =
+                {
+                    Offset = { X = 0, Y = 0 },
+                    Extent = _swapChain.Extent
+                }
+            };
+
+            ClearValue clearColor = new()
+            {
+                Color = new() { Float32_0 = 0, Float32_1 = 0, Float32_2 = 0, Float32_3 = 1 }
+            };
+
+            renderPassInfo.ClearValueCount = 1;
+            renderPassInfo.PClearValues = &clearColor;
+
+            _vk.CmdBeginRenderPass(commandBuffers[i], &renderPassInfo, SubpassContents.Inline);
+            _vk.CmdBindPipeline(commandBuffers[i], PipelineBindPoint.Graphics, _pipeline.GraphicsPipeline);
+
+            Buffer[] vertexBuffers = [_vertexBuffer];
+            ulong[] offsets = [0];
+
+            fixed (ulong* offsetsPtr = offsets)
+            fixed (Buffer* vertexBuffersPtr = vertexBuffers)
+            {
+                _vk.CmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffersPtr, offsetsPtr);
+            }
+
+            _vk.CmdBindIndexBuffer(commandBuffers[i], _indexBuffer, 0, IndexType.Uint16);
+            _vk.CmdBindDescriptorSets(commandBuffers[i], PipelineBindPoint.Graphics, _pipeline.PipelineLayout, 0, 1, in _descriptorSets[i], 0, null);
+            _vk.CmdDrawIndexed(commandBuffers[i], (uint)_indices.Length, 1, 0, 0, 0);
+            _vk.CmdEndRenderPass(commandBuffers[i]);
+
+            if (_vk.EndCommandBuffer(commandBuffers[i]) != Result.Success)
+            {
+                throw new Exception("Failed to record command buffer.");
+            }
+        }
+
+        return commandBuffers;
+    }
+
+    private void UpdateUniformBuffer(float windowTime, Extent2D swapChainExtent, uint currentImage)
+    {
+        UniformBufferObject ubo = new()
+        {
+            Model = Matrix4X4<float>.Identity * Matrix4X4.CreateFromAxisAngle<float>(new Vector3D<float>(0, 0, 1), windowTime * Radians(90.0f)),
+            View = Matrix4X4.CreateLookAt(new Vector3D<float>(2, 2, 2), new Vector3D<float>(0, 0, 0), new Vector3D<float>(0, 0, 1)),
+            Projection = Matrix4X4.CreatePerspectiveFieldOfView(Radians(45.0f), (float)swapChainExtent.Width / swapChainExtent.Height, 0.1f, 10.0f),
+        };
+        ubo.Projection.M22 *= -1;
+
+
+        void* data;
+        _vk.MapMemory(_devices.LogicalDevice, _uniformBuffersMemory[currentImage], 0, (ulong)Unsafe.SizeOf<UniformBufferObject>(), 0, &data);
+        new Span<UniformBufferObject>(data, 1)[0] = ubo;
+        _vk.UnmapMemory(_devices.LogicalDevice, _uniformBuffersMemory[currentImage]);
+
+        static float Radians(float angle) => angle * MathF.PI / 180f;
+    }
+
+    private (Buffer, DeviceMemory) CreateBufferWithMemory<T>(T[] dataSource, BufferUsageFlags usage)
+    {
+        ulong bufferSize = (ulong)(Unsafe.SizeOf<T>() * dataSource.Length);
+
+        Buffer stagingBuffer = CreateBuffer(_vk, _devices.LogicalDevice, bufferSize, BufferUsageFlags.TransferSrcBit);
+        DeviceMemory stagingBufferMemory = CreateMemory(_vk, _devices, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, stagingBuffer);
+
+        void* data;
+        _vk.MapMemory(_devices.LogicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
+        dataSource.AsSpan().CopyTo(new Span<T>(data, dataSource.Length));
+        _vk.UnmapMemory(_devices.LogicalDevice, stagingBufferMemory);
+
+        Buffer buffer = CreateBuffer(_vk, _devices.LogicalDevice, bufferSize, usage);
+        DeviceMemory bufferMemory = CreateMemory(_vk, _devices, MemoryPropertyFlags.DeviceLocalBit, buffer);
+
+        CopyBuffer(_vk, _devices, _commandPool, stagingBuffer, buffer, bufferSize);
+
+        _vk.DestroyBuffer(_devices.LogicalDevice, stagingBuffer, null);
+        _vk.FreeMemory(_devices.LogicalDevice, stagingBufferMemory, null);
+
+        return (buffer, bufferMemory);
+    }
+
+    private (Buffer[], DeviceMemory[]) CreateUniformBuffers()
+    {
+        ulong bufferSize = (ulong)Unsafe.SizeOf<UniformBufferObject>();
+
+        Buffer[] uniformBuffers = new Buffer[_swapChain.Images.Length];
+        DeviceMemory[] uniformBuffersMemory = new DeviceMemory[_swapChain.Images.Length];
+
+        for (int i = 0; i < _swapChain.Images.Length; i++)
+        {
+            uniformBuffers[i] = CreateBuffer(_vk, _devices.LogicalDevice, bufferSize, BufferUsageFlags.UniformBufferBit);
+            uniformBuffersMemory[i] = CreateMemory(_vk, _devices, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, uniformBuffers[i]);
+        }
+
+        return (uniformBuffers, uniformBuffersMemory);
+    }
+
+    private static Buffer CreateBuffer(Vk vk, Device logicalDevice, ulong bufferSize, BufferUsageFlags usage)
+    {
+        BufferCreateInfo bufferInfo = new()
+        {
+            SType = StructureType.BufferCreateInfo,
+            Size = bufferSize,
+            Usage = usage,
+            SharingMode = SharingMode.Exclusive
+        };
+
+        if (vk.CreateBuffer(logicalDevice, in bufferInfo, null, out Buffer buffer) != Result.Success)
+        {
+            throw new Exception("Failed to create vertex buffer.");
+        }
+
+        return buffer;
+    }
+
+    private static DeviceMemory CreateMemory(Vk vk, VulkanDevices devices, MemoryPropertyFlags properties, Buffer buffer)
+    {
+        vk.GetBufferMemoryRequirements(devices.LogicalDevice, buffer, out MemoryRequirements memRequirements);
+
+        MemoryAllocateInfo allocateInfo = new()
+        {
+            SType = StructureType.MemoryAllocateInfo,
+            AllocationSize = memRequirements.Size,
+            MemoryTypeIndex = FindMemoryType(vk, devices.PhysicalDevice, memRequirements.MemoryTypeBits, properties)
+        };
+
+        if (vk.AllocateMemory(devices.LogicalDevice, in allocateInfo, null, out DeviceMemory bufferMemory) != Result.Success)
+        {
+            throw new Exception("Failed to allocate vertex buffer memory.");
+        }
+
+        vk.BindBufferMemory(devices.LogicalDevice, buffer, bufferMemory, 0);
+
+        return bufferMemory;
+    }
+
+    private static void CopyBuffer(Vk vk, VulkanDevices devices, CommandPool commandPool, Buffer srcBuffer, Buffer dstBuffer, ulong size)
+    {
+        CommandBufferAllocateInfo allocateInfo = new()
+        {
+            SType = StructureType.CommandBufferAllocateInfo,
+            Level = CommandBufferLevel.Primary,
+            CommandPool = commandPool,
+            CommandBufferCount = 1
+        };
+
+        vk.AllocateCommandBuffers(devices.LogicalDevice, in allocateInfo, out CommandBuffer commandBuffer);
+
+        CommandBufferBeginInfo beginInfo = new()
+        {
+            SType = StructureType.CommandBufferBeginInfo,
+            Flags = CommandBufferUsageFlags.OneTimeSubmitBit
+        };
+
+        vk.BeginCommandBuffer(commandBuffer, in beginInfo);
+
+        BufferCopy copyRegion = new()
+        {
+            Size = size
+        };
+
+        vk.CmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, in copyRegion);
+
+        vk.EndCommandBuffer(commandBuffer);
+
+        SubmitInfo submitInfo = new()
+        {
+            SType = StructureType.SubmitInfo,
+            CommandBufferCount = 1,
+            PCommandBuffers = &commandBuffer
+        };
+
+        vk.QueueSubmit(devices.GraphicsQueue, 1, in submitInfo, default);
+        vk.QueueWaitIdle(devices.GraphicsQueue);
+
+        vk.FreeCommandBuffers(devices.LogicalDevice, commandPool, 1, in commandBuffer);
+    }
+
+    private static uint FindMemoryType(Vk vk, PhysicalDevice physicalDevice, uint typeFilter, MemoryPropertyFlags properties)
+    {
+        vk.GetPhysicalDeviceMemoryProperties(physicalDevice, out PhysicalDeviceMemoryProperties memProperties);
+
+        for (int i = 0; i < memProperties.MemoryTypeCount; i++)
+        {
+            if ((typeFilter & (1 << i)) != 0 && (memProperties.MemoryTypes[i].PropertyFlags & properties) == properties)
+            {
+                return (uint)i;
+            }
+        }
+
+        throw new Exception("Failed to find suitable memory type.");
+    }
+
+    private static DescriptorPool CreateDescriptorPool(Vk vk, Device logicalDevice, int swapChainImagesLength)
+    {
+        DescriptorPoolSize poolSize = new()
+        {
+            Type = DescriptorType.UniformBuffer,
+            DescriptorCount = (uint)swapChainImagesLength
+        };
+
+        DescriptorPoolCreateInfo poolInfo = new()
+        {
+            SType = StructureType.DescriptorPoolCreateInfo,
+            PoolSizeCount = 1,
+            PPoolSizes = &poolSize,
+            MaxSets = (uint)swapChainImagesLength
+        };
+
+        if (vk.CreateDescriptorPool(logicalDevice, in poolInfo, null, out DescriptorPool descriptorPool) != Result.Success)
+        {
+            throw new Exception("Failed to create descriptor pool.");
+        }
+
+        return descriptorPool;
+    }
+
+    private static DescriptorSet[] CreateDescriptorSets(Vk vk, Device logicalDevice, int swapChainImagesLength, DescriptorSetLayout descriptorSetLayout, Buffer[] uniformBuffers, DescriptorPool descriptorPool)
+    {
+        DescriptorSet[] descriptorSets = new DescriptorSet[swapChainImagesLength];
+        DescriptorSetLayout[] layouts = new DescriptorSetLayout[swapChainImagesLength];
+        Array.Fill(layouts, descriptorSetLayout);
+
+        fixed (DescriptorSetLayout* layoutsPtr = layouts)
+        {
+            DescriptorSetAllocateInfo allocateInfo = new()
+            {
+                SType = StructureType.DescriptorSetAllocateInfo,
+                DescriptorPool = descriptorPool,
+                DescriptorSetCount = (uint)swapChainImagesLength,
+                PSetLayouts = layoutsPtr
+            };
+
+            fixed (DescriptorSet* descriptorSetsPtr = descriptorSets)
+            {
+                if (vk!.AllocateDescriptorSets(logicalDevice, in allocateInfo, descriptorSetsPtr) != Result.Success)
+                {
+                    throw new Exception("Failed to allocate descriptor sets.");
+                }
+            }
+        }
+
+        for (int i = 0; i < swapChainImagesLength; i++)
+        {
+            DescriptorBufferInfo bufferInfo = new()
+            {
+                Buffer = uniformBuffers[i],
+                Offset = 0,
+                Range = (ulong)Unsafe.SizeOf<UniformBufferObject>(),
+
+            };
+
+            WriteDescriptorSet descriptorWrite = new()
+            {
+                SType = StructureType.WriteDescriptorSet,
+                DstSet = descriptorSets[i],
+                DstBinding = 0,
+                DstArrayElement = 0,
+                DescriptorType = DescriptorType.UniformBuffer,
+                DescriptorCount = 1,
+                PBufferInfo = &bufferInfo
+            };
+
+            vk.UpdateDescriptorSets(logicalDevice, 1, in descriptorWrite, 0, null);
+        }
+
+        return descriptorSets;
     }
 
     // Creates a framebuffer (compatible with render pass) for all of the images in the swap chain, to 
@@ -195,83 +561,6 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
         return commandPool;
     }
 
-    private static CommandBuffer[] CreateCommandBuffers(Vk vk, CommandPool commandPool, VulkanBuffers buffers, Device logicalDevice, Extent2D swapChainExtend, VulkanPipeline pipeline, Framebuffer[] framebuffers)
-    {
-        CommandBuffer[] commandBuffers = new CommandBuffer[framebuffers.Length];
-
-        CommandBufferAllocateInfo allocInfo = new()
-        {
-            SType = StructureType.CommandBufferAllocateInfo,
-            CommandPool = commandPool,
-            Level = CommandBufferLevel.Primary,
-            CommandBufferCount = (uint)commandBuffers.Length
-        };
-
-        fixed (CommandBuffer* commandBuffersPtr = commandBuffers)
-        {
-            if (vk.AllocateCommandBuffers(logicalDevice, in allocInfo, commandBuffersPtr) != Result.Success)
-            {
-                throw new Exception("Failed to allocate command buffers.");
-            }
-        }
-
-        for (int i = 0; i < commandBuffers.Length; i++)
-        {
-            CommandBufferBeginInfo beginInfo = new()
-            {
-                SType = StructureType.CommandBufferBeginInfo
-            };
-
-            if (vk.BeginCommandBuffer(commandBuffers[i], in beginInfo) != Result.Success)
-            {
-                throw new Exception("Failed to begin recording command buffer.");
-            }
-
-            RenderPassBeginInfo renderPassInfo = new()
-            {
-                SType = StructureType.RenderPassBeginInfo,
-                RenderPass = pipeline.RenderPass,
-                Framebuffer = framebuffers[i],
-                RenderArea =
-                {
-                    Offset = { X = 0, Y = 0 },
-                    Extent = swapChainExtend
-                }
-            };
-
-            ClearValue clearColor = new()
-            {
-                Color = new() { Float32_0 = 0, Float32_1 = 0, Float32_2 = 0, Float32_3 = 1 }
-            };
-
-            renderPassInfo.ClearValueCount = 1;
-            renderPassInfo.PClearValues = &clearColor;
-
-            vk.CmdBeginRenderPass(commandBuffers[i], &renderPassInfo, SubpassContents.Inline);
-            vk.CmdBindPipeline(commandBuffers[i], PipelineBindPoint.Graphics, pipeline.GraphicsPipeline);
-
-            Buffer[] vertexBuffers = [buffers.VertexBuffer];
-            ulong[] offsets = [0];
-
-            fixed (ulong* offsetsPtr = offsets)
-            fixed (Buffer* vertexBuffersPtr = vertexBuffers)
-            {
-                vk.CmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffersPtr, offsetsPtr);
-            }
-
-            vk.CmdBindIndexBuffer(commandBuffers[i], buffers.IndexBuffer, 0, IndexType.Uint16);
-            vk.CmdDrawIndexed(commandBuffers[i], (uint)buffers.Indices.Length, 1, 0, 0, 0);
-            vk.CmdEndRenderPass(commandBuffers[i]);
-
-            if (vk.EndCommandBuffer(commandBuffers[i]) != Result.Success)
-            {
-                throw new Exception("Failed to record command buffer.");
-            }
-        }
-
-        return commandBuffers;
-    }
-
     public void Dispose()
     {
         Dispose(disposing: true);
@@ -286,26 +575,83 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
             {
                 for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
                 {
-                    _vk.DestroySemaphore(_logicalDevice, _renderFinishedSemaphores![i], null);
-                    _vk.DestroySemaphore(_logicalDevice, _imageAvailableSemaphores![i], null);
-                    _vk.DestroyFence(_logicalDevice, _inFlightFences![i], null);
+                    _vk.DestroySemaphore(_devices.LogicalDevice, _renderFinishedSemaphores![i], null);
+                    _vk.DestroySemaphore(_devices.LogicalDevice, _imageAvailableSemaphores![i], null);
+                    _vk.DestroyFence(_devices.LogicalDevice, _inFlightFences![i], null);
                 }
 
                 fixed (CommandBuffer* commandBuffersPtr = _commandBuffers)
                 {
-                    _vk.FreeCommandBuffers(_logicalDevice, _commandPool, (uint)_commandBuffers.Length, commandBuffersPtr);
+                    _vk.FreeCommandBuffers(_devices.LogicalDevice, _commandPool, (uint)_commandBuffers.Length, commandBuffersPtr);
                 }
 
-                _buffers.Dispose();
-                _vk.DestroyCommandPool(_logicalDevice, _commandPool, null);
+                _vk.DestroyDescriptorPool(_devices.LogicalDevice, _descriptorPool, null);
+
+                for (int i = 0; i < _swapChain.Images.Length; i++)
+                {
+                    _vk.DestroyBuffer(_devices.LogicalDevice, _uniformBuffers[i], null);
+                    _vk.FreeMemory(_devices.LogicalDevice, _uniformBuffersMemory[i], null);
+                }
+
+                _vk.DestroyBuffer(_devices.LogicalDevice, _indexBuffer, null);
+                _vk.FreeMemory(_devices.LogicalDevice, _indexBufferMemory, null);
+
+                _vk.DestroyBuffer(_devices.LogicalDevice, _vertexBuffer, null);
+                _vk.FreeMemory(_devices.LogicalDevice, _vertexBufferMemory, null);
+
+                _vk.DestroyCommandPool(_devices.LogicalDevice, _commandPool, null);
 
                 foreach (Framebuffer framebuffer in _framebuffers)
                 {
-                    _vk.DestroyFramebuffer(_logicalDevice, framebuffer, null);
+                    _vk.DestroyFramebuffer(_devices.LogicalDevice, framebuffer, null);
                 }
             }
 
             _disposed = true;
         }
     }
+}
+
+internal struct Vertex
+{
+    public Vector2D<float> Position;
+    public Vector3D<float> Color;
+
+    public static VertexInputBindingDescription GetBindingDescription()
+    {
+        return new VertexInputBindingDescription()
+        {
+            Binding = 0,
+            Stride = (uint)Unsafe.SizeOf<Vertex>(),
+            InputRate = VertexInputRate.Vertex
+        };
+    }
+
+    public static VertexInputAttributeDescription[] GetAttributeDescriptions()
+    {
+        return
+        [
+            new VertexInputAttributeDescription()
+            {
+                Binding = 0,
+                Location = 0,
+                Format = Format.R32G32Sfloat,
+                Offset = (uint)Marshal.OffsetOf<Vertex>(nameof(Position))
+            },
+            new VertexInputAttributeDescription()
+            {
+                Binding = 0,
+                Location = 1,
+                Format = Format.R32G32B32Sfloat,
+                Offset = (uint)Marshal.OffsetOf<Vertex>(nameof(Color))
+            }
+        ];
+    }
+}
+
+internal struct UniformBufferObject
+{
+    public Matrix4X4<float> Model;
+    public Matrix4X4<float> View;
+    public Matrix4X4<float> Projection;
 }

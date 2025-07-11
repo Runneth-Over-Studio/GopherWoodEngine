@@ -1,5 +1,4 @@
 ﻿using Silk.NET.Core.Native;
-using Silk.NET.OpenAL;
 using Silk.NET.Vulkan;
 using System;
 using System.IO;
@@ -11,35 +10,70 @@ namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submo
 
 internal unsafe sealed class VulkanPipeline : IDisposable
 {
+    private const string COMPILED_VERT_SHADER_NAME = "shader_base.vert.spv";
+    private const string COMPILED_FRAG_SHADER_NAME = "shader_base.frag.spv";
+
     // Specifies how many color and depth buffers there will be, how many samples to use for each of them 
     // and how their contents should be handled throughout the rendering operations.
-    internal RenderPass RenderPass { get { return _renderPass; } }
+    internal RenderPass RenderPass { get; private set; }
 
-    internal Pipeline GraphicsPipeline { get { return _graphicsPipeline; } }
+    internal DescriptorSetLayout DescriptorSetLayout { get; }
 
-    private readonly VulkanSwapChain _swapChain;
-    private readonly RenderPass _renderPass;
-    private readonly PipelineLayout _pipelineLayout;
-    private readonly Pipeline _graphicsPipeline;
+    internal PipelineLayout PipelineLayout { get; private set; }
+
+    internal Pipeline GraphicsPipeline { get; private set; }
+
     private readonly Vk _vk;
     private readonly Device _logicalDevice;
+    private readonly VulkanSwapChain _swapChain;
     private bool _disposed = false;
 
-    public VulkanPipeline(Vk vk, Device logicalDevice, VulkanSwapChain swapChain)
+    public VulkanPipeline(Vk vk, Device logicalDevice, VulkanSwapChain swapChain, DescriptorSetLayout descriptorSetLayout)
     {
         _vk = vk;
         _logicalDevice = logicalDevice;
         _swapChain = swapChain;
-        _renderPass = CreateRenderPass();
-        _pipelineLayout = CreatePipelineLayout();
-        _graphicsPipeline = CreateGraphicsPipeline("shader_base.vert.spv", "shader_base.frag.spv");
+        RenderPass = CreateRenderPass(_vk, _logicalDevice, swapChain.ImageFormat);
+        DescriptorSetLayout = descriptorSetLayout;
+        PipelineLayout = CreatePipelineLayout(_vk, _logicalDevice, descriptorSetLayout);
+
+        GraphicsPipeline = CreateGraphicsPipeline(
+            _vk,
+            _logicalDevice,
+            swapChain.Extent,
+            RenderPass,
+            PipelineLayout,
+            COMPILED_VERT_SHADER_NAME,
+            COMPILED_FRAG_SHADER_NAME);
     }
 
-    private RenderPass CreateRenderPass()
+    internal void CleanUpSwapChain()
+    {
+        _vk.DestroyPipeline(_logicalDevice, GraphicsPipeline, null);
+        _vk.DestroyPipelineLayout(_logicalDevice, PipelineLayout, null);
+        _vk.DestroyRenderPass(_logicalDevice, RenderPass, null);
+    }
+
+    internal void ResetSwapChain(VulkanSwapChain swapChain)
+    {
+        RenderPass = CreateRenderPass(_vk, _logicalDevice, swapChain.ImageFormat);
+        PipelineLayout = CreatePipelineLayout(_vk, _logicalDevice, DescriptorSetLayout);
+
+        GraphicsPipeline = CreateGraphicsPipeline(
+            _vk,
+            _logicalDevice,
+            swapChain.Extent,
+            RenderPass,
+            PipelineLayout,
+            COMPILED_VERT_SHADER_NAME,
+            COMPILED_FRAG_SHADER_NAME);
+    }
+
+    private static RenderPass CreateRenderPass(Vk vk, Device logicalDevice, Format swapChainImageFormat)
     {
         AttachmentDescription colorAttachment = new()
         {
-            Format = _swapChain.ImageFormat,
+            Format = swapChainImageFormat,
             Samples = SampleCountFlags.Count1Bit,
             LoadOp = AttachmentLoadOp.Clear,
             StoreOp = AttachmentStoreOp.Store,
@@ -70,7 +104,7 @@ internal unsafe sealed class VulkanPipeline : IDisposable
             PSubpasses = &subpass
         };
 
-        if (_vk.CreateRenderPass(_logicalDevice, in renderPassInfo, null, out RenderPass renderPass) != Result.Success)
+        if (vk.CreateRenderPass(logicalDevice, in renderPassInfo, null, out RenderPass renderPass) != Result.Success)
         {
             throw new Exception("Failed to create render pass.");
         }
@@ -78,16 +112,20 @@ internal unsafe sealed class VulkanPipeline : IDisposable
         return renderPass;
     }
 
-    private PipelineLayout CreatePipelineLayout()
+    private static PipelineLayout CreatePipelineLayout(Vk vk, Device logicalDevice, DescriptorSetLayout descriptorSetLayout)
     {
+        DescriptorSetLayout* setLayouts = stackalloc DescriptorSetLayout[1];
+        setLayouts[0] = descriptorSetLayout;
+
         PipelineLayoutCreateInfo pipelineLayoutInfo = new()
         {
             SType = StructureType.PipelineLayoutCreateInfo,
-            SetLayoutCount = 0,
-            PushConstantRangeCount = 0
+            PushConstantRangeCount = 0,
+            SetLayoutCount = 1,
+            PSetLayouts = setLayouts
         };
 
-        if (_vk.CreatePipelineLayout(_logicalDevice, in pipelineLayoutInfo, null, out PipelineLayout pipelineLayout) != Result.Success)
+        if (vk.CreatePipelineLayout(logicalDevice, in pipelineLayoutInfo, null, out PipelineLayout pipelineLayout) != Result.Success)
         {
             throw new Exception("Failed to create pipeline layout.");
         }
@@ -95,15 +133,15 @@ internal unsafe sealed class VulkanPipeline : IDisposable
         return pipelineLayout;
     }
 
-    private Pipeline CreateGraphicsPipeline(string vertShaderFilename, string fragShaderFilename)
+    private static Pipeline CreateGraphicsPipeline(Vk vk, Device logicalDevice, Extent2D swapChainExtent, RenderPass renderPass, PipelineLayout pipelineLayout, string vertShaderFilename, string fragShaderFilename)
     {
         Pipeline graphicsPipeline;
 
         byte[] vertShaderCode = GetEmbeddedShaderBytes(vertShaderFilename);
         byte[] fragShaderCode = GetEmbeddedShaderBytes(fragShaderFilename);
 
-        ShaderModule vertShaderModule = CreateShaderModule(vertShaderCode);
-        ShaderModule fragShaderModule = CreateShaderModule(fragShaderCode);
+        ShaderModule vertShaderModule = CreateShaderModule(vk, logicalDevice, vertShaderCode);
+        ShaderModule fragShaderModule = CreateShaderModule(vk, logicalDevice, fragShaderCode);
 
         PipelineShaderStageCreateInfo vertShaderStageInfo = new()
         {
@@ -153,8 +191,8 @@ internal unsafe sealed class VulkanPipeline : IDisposable
             {
                 X = 0,
                 Y = 0,
-                Width = _swapChain.Extent.Width,
-                Height = _swapChain.Extent.Height,
+                Width = swapChainExtent.Width,
+                Height = swapChainExtent.Height,
                 MinDepth = 0,
                 MaxDepth = 1
             };
@@ -162,7 +200,7 @@ internal unsafe sealed class VulkanPipeline : IDisposable
             Rect2D scissor = new()
             {
                 Offset = { X = 0, Y = 0 },
-                Extent = _swapChain.Extent
+                Extent = swapChainExtent
             };
 
             PipelineViewportStateCreateInfo viewportState = new()
@@ -182,7 +220,7 @@ internal unsafe sealed class VulkanPipeline : IDisposable
                 PolygonMode = PolygonMode.Fill,
                 LineWidth = 1,
                 CullMode = CullModeFlags.BackBit,
-                FrontFace = FrontFace.Clockwise,
+                FrontFace = FrontFace.CounterClockwise,
                 DepthBiasEnable = false
             };
 
@@ -224,20 +262,20 @@ internal unsafe sealed class VulkanPipeline : IDisposable
                 PRasterizationState = &rasterizer,
                 PMultisampleState = &multisampling,
                 PColorBlendState = &colorBlending,
-                Layout = _pipelineLayout,
-                RenderPass = _renderPass,
+                Layout = pipelineLayout,
+                RenderPass = renderPass,
                 Subpass = 0,
                 BasePipelineHandle = default
             };
 
-            if (_vk.CreateGraphicsPipelines(_logicalDevice, default, 1, in pipelineInfo, null, out graphicsPipeline) != Result.Success)
+            if (vk.CreateGraphicsPipelines(logicalDevice, default, 1, in pipelineInfo, null, out graphicsPipeline) != Result.Success)
             {
                 throw new Exception("Failed to create graphics pipeline.");
             }
         }
 
-        _vk.DestroyShaderModule(_logicalDevice, fragShaderModule, null);
-        _vk.DestroyShaderModule(_logicalDevice, vertShaderModule, null);
+        vk.DestroyShaderModule(logicalDevice, fragShaderModule, null);
+        vk.DestroyShaderModule(logicalDevice, vertShaderModule, null);
 
         SilkMarshal.Free((nint)vertShaderStageInfo.PName);
         SilkMarshal.Free((nint)fragShaderStageInfo.PName);
@@ -245,7 +283,7 @@ internal unsafe sealed class VulkanPipeline : IDisposable
         return graphicsPipeline;
     }
 
-    private ShaderModule CreateShaderModule(byte[] code)
+    private static ShaderModule CreateShaderModule(Vk vk, Device logicalDevice, byte[] code)
     {
         ShaderModuleCreateInfo createInfo = new()
         {
@@ -258,7 +296,7 @@ internal unsafe sealed class VulkanPipeline : IDisposable
         {
             createInfo.PCode = (uint*)codePtr;
 
-            if (_vk.CreateShaderModule(_logicalDevice, in createInfo, null, out shaderModule) != Result.Success)
+            if (vk.CreateShaderModule(logicalDevice, in createInfo, null, out shaderModule) != Result.Success)
             {
                 throw new Exception("Creation of shader module was unsuccessful.");
             }
@@ -302,9 +340,10 @@ internal unsafe sealed class VulkanPipeline : IDisposable
         {
             if (disposing)
             {
-                _vk.DestroyPipeline(_logicalDevice, _graphicsPipeline, null);
-                _vk.DestroyPipelineLayout(_logicalDevice, _pipelineLayout, null);
-                _vk.DestroyRenderPass(_logicalDevice, _renderPass, null);
+                _vk.DestroyPipeline(_logicalDevice, GraphicsPipeline, null);
+                _vk.DestroyPipelineLayout(_logicalDevice, PipelineLayout, null);
+                //_vk.DestroyDescriptorSetLayout(_logicalDevice, DescriptorSetLayout, null);
+                _vk.DestroyRenderPass(_logicalDevice, RenderPass, null);
             }
 
             _disposed = true;

@@ -13,14 +13,13 @@ internal unsafe sealed class VulkanDebugger : IDisposable
     // Represents a debug messenger that is specific to our Vulkan instance and its layers, that receives messages from the Vulkan API.
     internal DebugUtilsMessengerEXT? Messenger { get; }
 
-    private readonly ExtDebugUtils? _utils;
     private readonly Instance _instance;
+    private readonly ExtDebugUtils? _utils;
     private bool _disposed = false;
 
     public VulkanDebugger(Instance instance, Vk vk, ILogger<IGraphicsDevice> logger)
     {
         _instance = instance;
-
         _utils = GetExtDebugUtils(_instance, vk);
         Messenger = CreateDebugMessenger(_utils, _instance, logger);
     }

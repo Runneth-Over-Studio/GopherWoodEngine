@@ -9,64 +9,83 @@ namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submo
 
 internal unsafe sealed class VulkanSwapChain : IDisposable
 {
-    // Basic purpose is to ensure that the image that we're currently rendering to is different from the one that is currently on the screen. 
-    // This is important to make sure that only complete images are shown.
-    internal SwapchainKHR SwapChain { get; }
+    internal KhrSwapchain KhrSwapChain { get; }
 
     // Resolution of the swap chain images. Almost always exactly equal to the resolution of the window that we're drawing to in pixels.
     internal Extent2D Extent { get; }
+
+    // Basic purpose is to ensure that the image that we're currently rendering to is different from the one that is currently on the screen. 
+    // This is important to make sure that only complete images are shown.
+    internal SwapchainKHR SwapChain { get; private set; }
+
+    internal Image[] Images { get; private set; }
 
     // Specifies the color channels and types.
     internal Format ImageFormat { get; }
 
     // Image view for every image in the swap chain.
     // Image views describe how to access the image and which part of the image to access.
-    internal ImageView[] ImageViews { get; }
-
-    internal Image[] Images { get; }
-
-    internal KhrSwapchain KhrSwapChain { get; }
+    internal ImageView[] ImageViews { get; private set; }
 
     private readonly Vk _vk;
-    private readonly Device _logicalDevice;
-
+    private readonly VulkanSurface _surface;
+    private readonly VulkanDevices _devices;
+    private readonly SwapChainSupport _swapChainSupport;
+    private readonly SurfaceFormatKHR _surfaceFormat;
     private bool _disposed = false;
 
     public VulkanSwapChain(Vk vk, Instance instance, VulkanSurface surface, VulkanDevices devices, Vector2D<int> framebufferSize)
     {
         _vk = vk;
-        _logicalDevice = devices.LogicalDevice;
+        _surface = surface;
+        _devices = devices;
 
-        if (!vk.TryGetDeviceExtension(instance, _logicalDevice, out KhrSwapchain khrSwapChain))
+        if (!vk.TryGetDeviceExtension(instance, devices.LogicalDevice, out KhrSwapchain khrSwapChain))
         {
             throw new NotSupportedException("VK_KHR_swapchain extension not found.");
         }
         KhrSwapChain = khrSwapChain;
 
-        SwapChainSupport swapChainSupport = surface.GetSwapChainSupport(devices.PhysicalDevice);
-        Extent = ChooseSwapExtent(swapChainSupport.Capabilities, framebufferSize);
+        _swapChainSupport = surface.GetSwapChainSupport(devices.PhysicalDevice);
+        Extent = ChooseSwapExtent(_swapChainSupport.Capabilities, framebufferSize);
 
-        uint imageCount = swapChainSupport.Capabilities.MinImageCount + 1;
-        if (swapChainSupport.Capabilities.MaxImageCount > 0 && imageCount > swapChainSupport.Capabilities.MaxImageCount)
+        uint imageCount = _swapChainSupport.Capabilities.MinImageCount + 1;
+        if (_swapChainSupport.Capabilities.MaxImageCount > 0 && imageCount > _swapChainSupport.Capabilities.MaxImageCount)
         {
-            imageCount = swapChainSupport.Capabilities.MaxImageCount;
+            imageCount = _swapChainSupport.Capabilities.MaxImageCount;
         }
 
-        SurfaceFormatKHR surfaceFormat = ChooseSwapSurfaceFormat(swapChainSupport.Formats);
-        SwapChain = CreateSwapchain(vk, surface, devices, swapChainSupport, surfaceFormat, imageCount);
-
-        KhrSwapChain.GetSwapchainImages(_logicalDevice, SwapChain, ref imageCount, null);
-        Images = new Image[imageCount];
-        fixed (Image* swapChainImagesPtr = Images)
-        {
-            KhrSwapChain.GetSwapchainImages(_logicalDevice, SwapChain, ref imageCount, swapChainImagesPtr);
-        }
-
-        ImageFormat = surfaceFormat.Format;
-        ImageViews = CreateImageViews(vk, _logicalDevice, Images, ImageFormat);
+        _surfaceFormat = ChooseSwapSurfaceFormat(_swapChainSupport.Formats);
+        SwapChain = CreateSwapchain(vk, surface, devices, KhrSwapChain, _swapChainSupport, Extent, _surfaceFormat, imageCount);
+        Images = CreateImages(_devices.LogicalDevice, ref imageCount, KhrSwapChain, SwapChain);
+        ImageFormat = _surfaceFormat.Format;
+        ImageViews = CreateImageViews(vk, devices.LogicalDevice, Images, ImageFormat);
     }
 
-    private SwapchainKHR CreateSwapchain(Vk vk, VulkanSurface surface, VulkanDevices devices, SwapChainSupport swapChainSupport, SurfaceFormatKHR surfaceFormat, uint imageCount)
+    internal void CleanUpSwapChain()
+    {
+        foreach (ImageView imageView in ImageViews)
+        {
+            _vk.DestroyImageView(_devices.LogicalDevice, imageView, null);
+        }
+
+        KhrSwapChain.DestroySwapchain(_devices.LogicalDevice, SwapChain, null);
+    }
+
+    internal void ResetSwapChain()
+    {
+        uint imageCount = _swapChainSupport.Capabilities.MinImageCount + 1;
+        if (_swapChainSupport.Capabilities.MaxImageCount > 0 && imageCount > _swapChainSupport.Capabilities.MaxImageCount)
+        {
+            imageCount = _swapChainSupport.Capabilities.MaxImageCount;
+        }
+
+        SwapChain = CreateSwapchain(_vk, _surface, _devices, KhrSwapChain, _swapChainSupport, Extent, _surfaceFormat, imageCount);
+        Images = CreateImages(_devices.LogicalDevice, ref imageCount, KhrSwapChain, SwapChain);
+        ImageViews = CreateImageViews(_vk, _devices.LogicalDevice, Images, ImageFormat);
+    }
+
+    private static SwapchainKHR CreateSwapchain(Vk vk, VulkanSurface surface, VulkanDevices devices, KhrSwapchain khrSwapChain, SwapChainSupport swapChainSupport, Extent2D extent, SurfaceFormatKHR surfaceFormat, uint imageCount)
     {
         PresentModeKHR presentMode = ChoosePresentMode(swapChainSupport.PresentModes);
 
@@ -77,7 +96,7 @@ internal unsafe sealed class VulkanSwapChain : IDisposable
             MinImageCount = imageCount,
             ImageFormat = surfaceFormat.Format,
             ImageColorSpace = surfaceFormat.ColorSpace,
-            ImageExtent = Extent,
+            ImageExtent = extent,
             ImageArrayLayers = 1,
             ImageUsage = ImageUsageFlags.ColorAttachmentBit
         };
@@ -108,7 +127,7 @@ internal unsafe sealed class VulkanSwapChain : IDisposable
             OldSwapchain = default
         };
 
-        if (KhrSwapChain.CreateSwapchain(devices.LogicalDevice, in createInfo, null, out SwapchainKHR swapChain) != Result.Success)
+        if (khrSwapChain.CreateSwapchain(devices.LogicalDevice, in createInfo, null, out SwapchainKHR swapChain) != Result.Success)
         {
             throw new Exception("Failed to create swap chain.");
         }
@@ -163,6 +182,20 @@ internal unsafe sealed class VulkanSwapChain : IDisposable
         }
     }
 
+    private static Image[] CreateImages(Device logicalDevice, ref uint imageCount, KhrSwapchain khrSwapChain, SwapchainKHR swapChain)
+    {
+        Image[] images = new Image[imageCount];
+
+        khrSwapChain.GetSwapchainImages(logicalDevice, swapChain, ref imageCount, null);
+
+        fixed (Image* swapChainImagesPtr = images)
+        {
+            khrSwapChain.GetSwapchainImages(logicalDevice, swapChain, ref imageCount, swapChainImagesPtr);
+        }
+
+        return images;
+    }
+
     private static ImageView[] CreateImageViews(Vk vk, Device logicalDevice, Image[] swapChainImages, Format swapChainImageFormat)
     {
         ImageView[] swapChainImageViews = new ImageView[swapChainImages.Length];
@@ -215,10 +248,10 @@ internal unsafe sealed class VulkanSwapChain : IDisposable
             {
                 foreach (ImageView imageView in ImageViews)
                 {
-                    _vk.DestroyImageView(_logicalDevice, imageView, null);
+                    _vk.DestroyImageView(_devices.LogicalDevice, imageView, null);
                 }
 
-                KhrSwapChain.DestroySwapchain(_logicalDevice, SwapChain, null);
+                KhrSwapChain.DestroySwapchain(_devices.LogicalDevice, SwapChain, null);
             }
 
             _disposed = true;

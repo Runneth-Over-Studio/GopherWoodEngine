@@ -20,4 +20,3 @@
 					- If NuGet package version changed, deploy to gallery and GitHub repo releases. 
 					- If editor version changed, deploy to GitHub repo releases.)
 					- https://github.com/cake-contrib/Cake.GitHub
-	
