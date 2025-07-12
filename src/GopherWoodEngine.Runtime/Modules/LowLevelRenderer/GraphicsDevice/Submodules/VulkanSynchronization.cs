@@ -308,16 +308,16 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
     {
         ulong bufferSize = (ulong)(Unsafe.SizeOf<T>() * dataSource.Length);
 
-        Buffer stagingBuffer = CreateBuffer(_vk, _devices.LogicalDevice, bufferSize, BufferUsageFlags.TransferSrcBit);
-        DeviceMemory stagingBufferMemory = CreateMemory(_vk, _devices, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, stagingBuffer);
+        Buffer stagingBuffer = VulkanUtilities.CreateBuffer(_vk, _devices.LogicalDevice, bufferSize, BufferUsageFlags.TransferSrcBit);
+        DeviceMemory stagingBufferMemory = VulkanUtilities.CreateMemory(_vk, _devices, stagingBuffer, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit);
 
         void* data;
         _vk.MapMemory(_devices.LogicalDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
         dataSource.AsSpan().CopyTo(new Span<T>(data, dataSource.Length));
         _vk.UnmapMemory(_devices.LogicalDevice, stagingBufferMemory);
 
-        Buffer buffer = CreateBuffer(_vk, _devices.LogicalDevice, bufferSize, usage);
-        DeviceMemory bufferMemory = CreateMemory(_vk, _devices, MemoryPropertyFlags.DeviceLocalBit, buffer);
+        Buffer buffer = VulkanUtilities.CreateBuffer(_vk, _devices.LogicalDevice, bufferSize, usage);
+        DeviceMemory bufferMemory = VulkanUtilities.CreateMemory(_vk, _devices, buffer, MemoryPropertyFlags.DeviceLocalBit);
 
         CopyBuffer(_vk, _devices, _commandPool, stagingBuffer, buffer, bufferSize);
 
@@ -336,71 +336,16 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
 
         for (int i = 0; i < _swapChain.Images.Length; i++)
         {
-            uniformBuffers[i] = CreateBuffer(_vk, _devices.LogicalDevice, bufferSize, BufferUsageFlags.UniformBufferBit);
-            uniformBuffersMemory[i] = CreateMemory(_vk, _devices, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, uniformBuffers[i]);
+            uniformBuffers[i] = VulkanUtilities.CreateBuffer(_vk, _devices.LogicalDevice, bufferSize, BufferUsageFlags.UniformBufferBit);
+            uniformBuffersMemory[i] = VulkanUtilities.CreateMemory(_vk, _devices, uniformBuffers[i], MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit);
         }
 
         return (uniformBuffers, uniformBuffersMemory);
     }
 
-    private static Buffer CreateBuffer(Vk vk, Device logicalDevice, ulong bufferSize, BufferUsageFlags usage)
-    {
-        BufferCreateInfo bufferInfo = new()
-        {
-            SType = StructureType.BufferCreateInfo,
-            Size = bufferSize,
-            Usage = usage,
-            SharingMode = SharingMode.Exclusive
-        };
-
-        if (vk.CreateBuffer(logicalDevice, in bufferInfo, null, out Buffer buffer) != Result.Success)
-        {
-            throw new Exception("Failed to create vertex buffer.");
-        }
-
-        return buffer;
-    }
-
-    private static DeviceMemory CreateMemory(Vk vk, VulkanDevices devices, MemoryPropertyFlags properties, Buffer buffer)
-    {
-        vk.GetBufferMemoryRequirements(devices.LogicalDevice, buffer, out MemoryRequirements memRequirements);
-
-        MemoryAllocateInfo allocateInfo = new()
-        {
-            SType = StructureType.MemoryAllocateInfo,
-            AllocationSize = memRequirements.Size,
-            MemoryTypeIndex = FindMemoryType(vk, devices.PhysicalDevice, memRequirements.MemoryTypeBits, properties)
-        };
-
-        if (vk.AllocateMemory(devices.LogicalDevice, in allocateInfo, null, out DeviceMemory bufferMemory) != Result.Success)
-        {
-            throw new Exception("Failed to allocate vertex buffer memory.");
-        }
-
-        vk.BindBufferMemory(devices.LogicalDevice, buffer, bufferMemory, 0);
-
-        return bufferMemory;
-    }
-
     private static void CopyBuffer(Vk vk, VulkanDevices devices, CommandPool commandPool, Buffer srcBuffer, Buffer dstBuffer, ulong size)
     {
-        CommandBufferAllocateInfo allocateInfo = new()
-        {
-            SType = StructureType.CommandBufferAllocateInfo,
-            Level = CommandBufferLevel.Primary,
-            CommandPool = commandPool,
-            CommandBufferCount = 1
-        };
-
-        vk.AllocateCommandBuffers(devices.LogicalDevice, in allocateInfo, out CommandBuffer commandBuffer);
-
-        CommandBufferBeginInfo beginInfo = new()
-        {
-            SType = StructureType.CommandBufferBeginInfo,
-            Flags = CommandBufferUsageFlags.OneTimeSubmitBit
-        };
-
-        vk.BeginCommandBuffer(commandBuffer, in beginInfo);
+        CommandBuffer commandBuffer = VulkanUtilities.BeginSingleTimeCommands(vk, devices, commandPool);
 
         BufferCopy copyRegion = new()
         {
@@ -409,34 +354,7 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
 
         vk.CmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, in copyRegion);
 
-        vk.EndCommandBuffer(commandBuffer);
-
-        SubmitInfo submitInfo = new()
-        {
-            SType = StructureType.SubmitInfo,
-            CommandBufferCount = 1,
-            PCommandBuffers = &commandBuffer
-        };
-
-        vk.QueueSubmit(devices.GraphicsQueue, 1, in submitInfo, default);
-        vk.QueueWaitIdle(devices.GraphicsQueue);
-
-        vk.FreeCommandBuffers(devices.LogicalDevice, commandPool, 1, in commandBuffer);
-    }
-
-    private static uint FindMemoryType(Vk vk, PhysicalDevice physicalDevice, uint typeFilter, MemoryPropertyFlags properties)
-    {
-        vk.GetPhysicalDeviceMemoryProperties(physicalDevice, out PhysicalDeviceMemoryProperties memProperties);
-
-        for (int i = 0; i < memProperties.MemoryTypeCount; i++)
-        {
-            if ((typeFilter & (1 << i)) != 0 && (memProperties.MemoryTypes[i].PropertyFlags & properties) == properties)
-            {
-                return (uint)i;
-            }
-        }
-
-        throw new Exception("Failed to find suitable memory type.");
+        VulkanUtilities.EndSingleTimeCommands(vk, devices, commandPool, commandBuffer);
     }
 
     private static DescriptorPool CreateDescriptorPool(Vk vk, Device logicalDevice, int swapChainImagesLength)
@@ -494,8 +412,7 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
             {
                 Buffer = uniformBuffers[i],
                 Offset = 0,
-                Range = (ulong)Unsafe.SizeOf<UniformBufferObject>(),
-
+                Range = (ulong)Unsafe.SizeOf<UniformBufferObject>()
             };
 
             WriteDescriptorSet descriptorWrite = new()

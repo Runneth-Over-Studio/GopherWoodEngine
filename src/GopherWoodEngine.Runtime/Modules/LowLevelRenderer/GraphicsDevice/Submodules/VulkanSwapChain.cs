@@ -123,8 +123,7 @@ internal unsafe sealed class VulkanSwapChain : IDisposable
             PreTransform = swapChainSupport.Capabilities.CurrentTransform,
             CompositeAlpha = CompositeAlphaFlagsKHR.OpaqueBitKhr,
             PresentMode = presentMode,
-            Clipped = true,
-            OldSwapchain = default
+            Clipped = true
         };
 
         if (khrSwapChain.CreateSwapchain(devices.LogicalDevice, in createInfo, null, out SwapchainKHR swapChain) != Result.Success)
@@ -202,33 +201,7 @@ internal unsafe sealed class VulkanSwapChain : IDisposable
 
         for (int i = 0; i < swapChainImages.Length; i++)
         {
-            ImageViewCreateInfo createInfo = new()
-            {
-                SType = StructureType.ImageViewCreateInfo,
-                Image = swapChainImages[i],
-                ViewType = ImageViewType.Type2D,
-                Format = swapChainImageFormat,
-                Components =
-                {
-                    R = ComponentSwizzle.Identity,
-                    G = ComponentSwizzle.Identity,
-                    B = ComponentSwizzle.Identity,
-                    A = ComponentSwizzle.Identity
-                },
-                SubresourceRange =
-                {
-                    AspectMask = ImageAspectFlags.ColorBit,
-                    BaseMipLevel = 0,
-                    LevelCount = 1,
-                    BaseArrayLayer = 0,
-                    LayerCount = 1
-                }
-            };
-
-            if (vk.CreateImageView(logicalDevice, in createInfo, null, out swapChainImageViews[i]) != Result.Success)
-            {
-                throw new Exception("Failed to create image views.");
-            }
+            swapChainImageViews[i] = VulkanUtilities.CreateImageView(vk, logicalDevice, swapChainImages[i], swapChainImageFormat);
         }
 
         return swapChainImageViews;
