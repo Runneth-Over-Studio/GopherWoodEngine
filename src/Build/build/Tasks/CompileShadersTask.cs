@@ -45,7 +45,7 @@ public sealed class CompileShadersTask : FrostingTask<BuildContext>
 
         if (string.IsNullOrEmpty(vulkanSdkPath))
         {
-            throw new InvalidOperationException("VULKAN_SDK environment variable is not set. Please install the Vulkan SDK.");
+            throw new InvalidOperationException("VULKAN_SDK environment variable is required to be set. Please verify Vulkan SDK installation and that the environment variable is correctly set.");
         }
 
         return vulkanSdkPath;

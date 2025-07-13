@@ -48,10 +48,10 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
 
         _vertices =
         [
-            new Vertex { Position = new Vector2D<float>(-0.5f,-0.5f), Color = new Vector3D<float>(1.0f, 0.0f, 0.0f) },
-            new Vertex { Position = new Vector2D<float>(0.5f,-0.5f), Color = new Vector3D<float>(0.0f, 1.0f, 0.0f) },
-            new Vertex { Position = new Vector2D<float>(0.5f,0.5f), Color = new Vector3D<float>(0.0f, 0.0f, 1.0f) },
-            new Vertex { Position = new Vector2D<float>(-0.5f,0.5f), Color = new Vector3D<float>(1.0f, 1.0f, 1.0f) }
+            new Vertex { Position = new Vector2D<float>(-0.5f, -0.5f), Color = new Vector3D<float>(1.0f, 0.0f, 0.0f) },
+            new Vertex { Position = new Vector2D<float>(0.5f, -0.5f), Color = new Vector3D<float>(0.0f, 1.0f, 0.0f) },
+            new Vertex { Position = new Vector2D<float>(0.5f, 0.5f), Color = new Vector3D<float>(0.0f, 0.0f, 1.0f) },
+            new Vertex { Position = new Vector2D<float>(-0.5f, 0.5f), Color = new Vector3D<float>(1.0f, 1.0f, 1.0f) }
         ];
 
         _indices = [0, 1, 2, 2, 3, 0];
