@@ -21,6 +21,8 @@ namespace Build.Tasks;
 [TaskDescription("Processes source logo image to be used in the readme, NuGet package, and documentation.")]
 public sealed class ProcessImagesTask : AsyncFrostingTask<BuildContext>
 {
+    private const string LOGO_SVG_FILENAME = "gopherwood-logo.svg";
+
     public override bool ShouldRun(BuildContext context)
     {
         return context.Config == BuildConfigurations.Release;
@@ -38,7 +40,7 @@ public sealed class ProcessImagesTask : AsyncFrostingTask<BuildContext>
         context.Log.Information($"Creating project logo image (PNG) from source SVG file...");
         DirectoryPath sourceContentDirectory = context.RootDirectory + context.Directory("content");
         DirectoryPath sourceLogoDirectory = sourceContentDirectory + context.Directory("logo");
-        string sourceSVGPath = System.IO.Path.Combine(sourceLogoDirectory.FullPath, "gopherwood-logo.svg");
+        string sourceSVGPath = System.IO.Path.Combine(sourceLogoDirectory.FullPath, LOGO_SVG_FILENAME);
         string pngPath = System.IO.Path.Combine(releaseContentDirectory.FullPath, "logo.png");
         await ConvertSvgToPngAsync(sourceSVGPath, pngPath);
 

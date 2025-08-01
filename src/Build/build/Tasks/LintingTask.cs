@@ -15,12 +15,14 @@ public sealed class LintingTask : FrostingTask<BuildContext>
     //      https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/style-rules/
     //      https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/configuration-files#editorconfig
 
+    private const string SOLUTION_NAME = "GopherWoodEngine.sln";
+
     public override void Run(BuildContext context)
     {
         Stopwatch stopwatch = Stopwatch.StartNew();
 
-        context.Log.Information($"Formatting GopherWoodEngine solution...");
-        string solutionPath = System.IO.Path.Combine(context.SourceDirectory, "GopherWoodEngine.sln");
+        context.Log.Information($"Formatting solution...");
+        string solutionPath = System.IO.Path.Combine(context.SourceDirectory, SOLUTION_NAME);
         context.StartProcess("dotnet", $"format \"{solutionPath}\" --no-restore --report \"{context.RuntimeOutputDirectory.Path.FullPath}\"");
 
         stopwatch.Stop();
