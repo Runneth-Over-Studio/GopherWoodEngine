@@ -22,13 +22,17 @@ During initial development the version will be at 0.1.0. Once a usable API is re
 ## Build Requirements
 - All projects target the LTS version of the [.NET SDK](https://dotnet.microsoft.com/en-us/download), which also provides the `dotnet` command-line tool used in the build process.
 - The engine renderer requires the [Vulkan SDK](https://www.lunarg.com/vulkan-sdk/), which provides validation layers and command-line tools for shader compilation. 
-	- The 'VULKAN_SDK' environment variable expected to be set during installation and is required by the build.
+	- The 'VULKAN_SDK' environment variable is required to be set. On Windows this is typically done automatically during SDK installation. On Linux the setup-env.sh script included with the SDK download must be sourced. On most Ubuntu desktop systems, adding a line to your .profile file to source the setup-env.sh file sets up the environment variables for you for both shells and programs started from the graphical environment in a desktop session.
 - The Build project must be run at least once prior to launching other projects to ensure necessary shaders are compiled and embedded into the engine runtime.
 	- The Build project uses [Cake](https://cakebuild.net/) (C# Make) as the build orchestrator and can be launched from your IDE or via script.
 
 		- On OSX/Linux run:
 		```bash
-		build.sh
+		./build.sh
+		```
+		- If you get a "Permission denied" error, you may need to make the script executable first:
+		```bash
+		chmod +x build.sh
 		```
 
 		- On Windows PowerShell run:
