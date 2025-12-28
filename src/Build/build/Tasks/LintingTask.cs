@@ -15,7 +15,7 @@ public sealed class LintingTask : FrostingTask<BuildContext>
     //      https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/style-rules/
     //      https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/configuration-files#editorconfig
 
-    private const string SOLUTION_NAME = "GopherWoodEngine.sln";
+    private const string SOLUTION_NAME = "GopherWoodEngine.slnx";
 
     public override void Run(BuildContext context)
     {

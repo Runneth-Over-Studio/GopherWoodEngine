@@ -1,0 +1,6 @@
+﻿<Solution>
+  <Project Path="GopherWoodEngine.Runtime/GopherWoodEngine.Runtime.csproj" Id="C378B441-D5B7-4763-B289-DE15CA834A8A" />
+  <Project Path="TestBed/TestBed.csproj" Id="08DBAC51-DB15-4F6B-992E-96EE0915054F" />
+  <Project Path="Tests/Tests.csproj" Id="3566755F-B8F1-4A90-8FEA-B524A46634BA" />
+  <Project Path="Build/build\Build.csproj" Id="E83E5251-5EC1-4827-A099-842A7ACB31A8" />
+</Solution>

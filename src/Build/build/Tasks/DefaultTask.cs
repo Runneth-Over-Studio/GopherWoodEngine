@@ -15,5 +15,6 @@ public sealed class DefaultTask : FrostingTask
     public override void Run(ICakeContext context)
     {
         context.Log.Information("Set the task to run with --target [task]");
+        context.Log.Information("Run entire release build with: dotnet run -- --configuration=Release");
     }
 }

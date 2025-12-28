@@ -1,5 +1,4 @@
-﻿using Cake.Common.Tools.DotNet;
-using Cake.Common.Tools.DotNet.Test;
+﻿using Cake.Common;
 using Cake.Frosting;
 
 namespace Build.Tasks;
@@ -11,13 +10,9 @@ public sealed class TestsTask : FrostingTask<BuildContext>
 {
     public override void Run(BuildContext context)
     {
-        string testsProjectPath = $"{context.SourceDirectory}/Tests/Tests.csproj";
+        string testExecutable = $"{context.SourceDirectory}/Tests/bin/{context.Config}/net10.0/Tests.dll";
 
-        context.DotNetTest(testsProjectPath, new DotNetTestSettings
-        {
-            Configuration = context.Config.ToString(),
-            NoRestore = true,
-            NoBuild = true
-        });
+        // Run the test executable directly using dotnet exec
+        context.StartProcess("dotnet", $"exec \"{testExecutable}\"");
     }
 }
