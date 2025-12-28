@@ -1,6 +1,4 @@
-<p align="left">
-  <img src="logo.png" width="175" alt="Gopher Wood Engine Logo">
-</p>
+![UtilityTemplates Logo](https://raw.githubusercontent.com/Runneth-Over-Studio/GopherWoodEngine/refs/heads/main/content/icon-175.png)
 
 # Gopher Wood Engine
 Runneth Over Studio's in-house game engine. Written in C#.

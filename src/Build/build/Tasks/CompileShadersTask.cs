@@ -1,4 +1,6 @@
-﻿using Cake.Common;
+﻿using Build.DTOs;
+using Build.Tasks.Standard;
+using Cake.Common;
 using Cake.Common.IO;
 using Cake.Common.IO.Paths;
 using Cake.Core.Diagnostics;
@@ -6,6 +8,7 @@ using Cake.Core.IO;
 using Cake.Frosting;
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 
 namespace Build.Tasks;
@@ -25,7 +28,7 @@ public sealed class CompileShadersTask : FrostingTask<BuildContext>
         string glslcFileName = GetGlslcFileName(context);
         string glslcPath = System.IO.Path.Combine(vulkanSdkPath, "Bin", glslcFileName);
 
-        ConvertableDirectoryPath shadersPath = context.RuntimeDirectory + context.Directory("Modules/LowLevelRenderer/Shaders");
+        string shadersPath = System.IO.Path.Combine(context.EngineRuntimeProject.DirectoryPathAbsolute, "Modules", "LowLevelRenderer", "Shaders");
         string vertexSourcePath = System.IO.Path.Combine(shadersPath, "shader_base.vert");
         string vertexSPIRVPath = System.IO.Path.Combine(shadersPath, "shader_base.vert.spv");
         string fragmentSourcePath = System.IO.Path.Combine(shadersPath, "shader_base.frag");

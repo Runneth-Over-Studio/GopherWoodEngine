@@ -8,7 +8,7 @@ using static Build.BuildContext;
 namespace Build.Tasks;
 
 [TaskName("Package")]
-[IsDependentOn(typeof(CompileProjectsTask))]
+[IsDependentOn(typeof(DocumentationTask))]
 [TaskDescription("Generates the NuGet package for the runtime using previously processed images and project properties.")]
 public sealed class PackageTask : FrostingTask<BuildContext>
 {
@@ -19,10 +19,10 @@ public sealed class PackageTask : FrostingTask<BuildContext>
 
     public override void Run(BuildContext context)
     {
-        string engineProjectPath = context.RuntimeDirectory + context.File($"{context.PublishedProjectName}.csproj");
-        DirectoryPath nugetOutputDirectoryPath = context.RuntimeOutputDirectory + context.Directory("NuGet");
+        DirectoryPath outputPath = DirectoryPath.FromString(context.EngineRuntimeProject.OutputDirectoryPathAbsolute);
+        DirectoryPath nugetOutputDirectoryPath = outputPath + context.Directory("NuGet");
 
-        context.DotNetPack(engineProjectPath, new DotNetPackSettings
+        context.DotNetPack(context.EngineRuntimeProject.CsprojFilePathAbsolute, new DotNetPackSettings
         {
             Configuration = context.Config.ToString(),
             NoRestore = true,

@@ -1,4 +1,5 @@
-﻿using Cake.Common;
+﻿using Build.Tasks.Standard;
+using Cake.Common;
 using Cake.Frosting;
 
 namespace Build.Tasks;
@@ -10,9 +11,10 @@ public sealed class TestsTask : FrostingTask<BuildContext>
 {
     public override void Run(BuildContext context)
     {
-        string testExecutable = $"{context.SourceDirectory}/Tests/bin/{context.Config}/net10.0/Tests.dll";
+        string testExecutable = System.IO.Path.Combine(context.TestsProject.OutputDirectoryPathAbsolute, context.TestsProject.Name, ".dll");
 
-        // Run the test executable directly using dotnet exec
+        // Run the test executable directly using dotnet exec.
+        // If a solution-level global.json is ever added, can use Cake's DotNetTest. ref: https://github.com/cake-build/cake/issues/4627
         context.StartProcess("dotnet", $"exec \"{testExecutable}\"");
     }
 }

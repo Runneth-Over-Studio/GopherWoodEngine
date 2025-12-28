@@ -15,7 +15,7 @@ using static Build.BuildContext;
 namespace Build.Tasks;
 
 [TaskName("Documentation")]
-[IsDependentOn(typeof(CompileProjectsTask))]
+[IsDependentOn(typeof(TestsTask))]
 [TaskDescription("Uses docfx, with previously processed images, to generate the API documentation.")]
 public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
 {
@@ -34,7 +34,8 @@ public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
 
         Stopwatch stopwatch = Stopwatch.StartNew();
 
-        DirectoryPath workspaceDirectoryPath = context.RuntimeOutputDirectory + context.Directory("Docs");
+        DirectoryPath outputPath = DirectoryPath.FromString(context.EngineRuntimeProject.OutputDirectoryPathAbsolute);
+        DirectoryPath workspaceDirectoryPath = outputPath + context.Directory("Docs");
         string workspaceFullPath = workspaceDirectoryPath.FullPath;
 
         // Generate the docfx project and default docfx.json file.
@@ -44,7 +45,7 @@ public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
         CopyDocfxImages(context, workspaceDirectoryPath);
 
         // Read the default docfx.json and customize it as necessary.
-        string contextToConfigPath = context.RuntimeOutputDirectory + context.Directory("Docs/docfx.json");
+        string contextToConfigPath = outputPath + context.Directory("Docs/docfx.json");
         DocfxRoot docfxConfig = await CustomizeDocfxConfigAsync(context, contextToConfigPath);
 
         // Overwrite docfx.json file with the customized configuration.
@@ -96,15 +97,15 @@ public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
         DirectoryPath docfxImageDirectoryPath = workspaceDirectoryPath + context.Directory("images");
         context.EnsureDirectoryExists(docfxImageDirectoryPath);
 
-        DirectoryPath releaseContentDirectoryPath = context.RuntimeOutputDirectory + context.Directory("Content");
+        string contentDir = System.IO.Path.Combine(context.AbsolutePathToRepo, "content");
 
         context.CopyFile(
-            System.IO.Path.Combine(releaseContentDirectoryPath.FullPath, "logo.png"),
+            System.IO.Path.Combine(contentDir, "logo.png"),
             System.IO.Path.Combine(docfxImageDirectoryPath.FullPath, "logo.png")
         );
 
         context.CopyFile(
-            System.IO.Path.Combine(releaseContentDirectoryPath.FullPath, "favicon.ico"),
+            System.IO.Path.Combine(contentDir, "favicon.ico"),
             System.IO.Path.Combine(docfxImageDirectoryPath.FullPath, "favicon.ico")
         );
     }
@@ -124,7 +125,7 @@ public sealed class DocumentationTask : AsyncFrostingTask<BuildContext>
         // Update the docfx config.
         docfxMetadata.NoRestore = true; // Dedicated build task for running restore.
         docfxSrc.Src = "../"; // Glob patterns in docfx currently does not support crawling files outside the directory containing docfx.json. Use the metadata.src.src property.
-        docfxSrc.Files = [$"{context.PublishedProjectName}.dll"]; // When the file extension is .dll or .exe, docfx produces API docs by reflecting the assembly and the side-by-side XML documentation file.
+        docfxSrc.Files = [$"{BuildContext.ENGINE_RUNTIME_PROJECT_NAME}.dll"]; // When the file extension is .dll or .exe, docfx produces API docs by reflecting the assembly and the side-by-side XML documentation file.
         globalMetadata.AppTitle = "Gopher Wood Engine"; // Used in the generated HTML title tag.
         globalMetadata.AppName = "Gopher Wood Engine"; // Used in the generated HTML header.
         globalMetadata.AppFaviconPath = "./images/favicon.ico";

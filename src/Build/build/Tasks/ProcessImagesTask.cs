@@ -1,6 +1,5 @@
-﻿using Cake.Common.IO;
+﻿using Build.Tasks.Standard;
 using Cake.Core.Diagnostics;
-using Cake.Core.IO;
 using Cake.Frosting;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
@@ -10,7 +9,6 @@ using SkiaSharp;
 using Svg.Skia;
 using System;
 using System.Diagnostics;
-using System.IO;
 using System.Threading.Tasks;
 using static Build.BuildContext;
 
@@ -18,11 +16,9 @@ namespace Build.Tasks;
 
 [TaskName("Process Images")]
 [IsDependentOn(typeof(RestoreTask))]
-[TaskDescription("Processes source logo image to be used in the readme, NuGet package, and documentation.")]
+[TaskDescription("Processes source logo image to be used in the read-me and as release icons.")]
 public sealed class ProcessImagesTask : AsyncFrostingTask<BuildContext>
 {
-    private const string LOGO_SVG_FILENAME = "gopherwood-logo.svg";
-
     public override bool ShouldRun(BuildContext context)
     {
         return context.Config == BuildConfigurations.Release;
@@ -32,34 +28,23 @@ public sealed class ProcessImagesTask : AsyncFrostingTask<BuildContext>
     {
         Stopwatch stopwatch = Stopwatch.StartNew();
 
-        // Create content folder in output location to place resources.
-        DirectoryPath releaseContentDirectory = context.RuntimeOutputDirectory + context.Directory("Content");
-        context.EnsureDirectoryExists(releaseContentDirectory);
+        string contentDir = System.IO.Path.Combine(context.AbsolutePathToRepo, "content");
 
-        // Convert source icon SVG to PNG and save to new content folder.
+        // Convert source logo SVG to PNG and save to content folder. Used in the read-me markdown document.
         context.Log.Information($"Creating project logo image (PNG) from source SVG file...");
-        DirectoryPath sourceContentDirectory = context.RootDirectory + context.Directory("content");
-        DirectoryPath sourceLogoDirectory = sourceContentDirectory + context.Directory("logo");
-        string sourceSVGPath = System.IO.Path.Combine(sourceLogoDirectory.FullPath, LOGO_SVG_FILENAME);
-        string pngPath = System.IO.Path.Combine(releaseContentDirectory.FullPath, "logo.png");
+        string sourceSVGPath = System.IO.Path.Combine(contentDir, "logo", BuildContext.LOGO_SVG_FILENAME);
+        string pngPath = System.IO.Path.Combine(contentDir, "logo.png");
         await ConvertSvgToPngAsync(sourceSVGPath, pngPath);
 
-        // Convert PNG to a favicon image and save to new content foler.
-        context.Log.Information($"Creating project favicon image (ICO) from project logo image...");
-        string icoPath = System.IO.Path.Combine(releaseContentDirectory.FullPath, "favicon.ico");
-        await ConvertPngToIcoAsync(pngPath, icoPath);
-
-        // Create NuGet package icon. Microsoft recommends an image resolution of 128x128 and must be either JPEG or PNG.
-        context.Log.Information($"Creating NuGet package icon...");
-        string packageIconPath = System.IO.Path.Combine(sourceContentDirectory.FullPath, "package-icon.png");
-        using (Image image = await Image.LoadAsync(pngPath))
-        using (Image resized = image.Clone(ctx => ctx.Resize(128, 128)))
-        {
-            await resized.SaveAsync(packageIconPath, new PngEncoder());
-        }
-
-        // Copy the logo image to the repo root folder. Used in the readme markdown document.
-        context.CopyFile(pngPath, System.IO.Path.Combine(context.RootDirectory.Path.FullPath, "logo.png"));
+        // Create deployment icons using the logo PNG as their basis.
+        context.Log.Information($"Creating icons suitable for various deployments...");
+        await Task.WhenAll(
+            ConvertPngToIcoAsync(pngPath, System.IO.Path.Combine(contentDir, "favicon.ico")),
+            ConvertPngToIcoAsync(pngPath, System.IO.Path.Combine(contentDir, "extension-icon.ico"), 64),
+            ResizePngAsync(pngPath, System.IO.Path.Combine(contentDir, "icon-175.png"), 175, 175),
+            ResizePngAsync(pngPath, System.IO.Path.Combine(contentDir, "extension-icon.png"), 90, 90),
+            ResizePngAsync(pngPath, System.IO.Path.Combine(contentDir, "package-icon.png"), 128, 128)
+        );
 
         stopwatch.Stop();
         double completionTime = Math.Round(stopwatch.Elapsed.TotalSeconds, 1);
@@ -108,13 +93,13 @@ public sealed class ProcessImagesTask : AsyncFrostingTask<BuildContext>
         using Image resizedImage = image.Clone(ctx => ctx.Resize(iconSize, iconSize));
 
         // Save resized image as PNG to memory.
-        using MemoryStream pngStream = new();
+        using System.IO.MemoryStream pngStream = new();
         await resizedImage.SaveAsPngAsync(pngStream);
         byte[] pngData = pngStream.ToArray();
 
         // Create the ICO file.
-        await using FileStream output = File.OpenWrite(targetIcoPath);
-        await using BinaryWriter iconWriter = new(output);
+        await using System.IO.FileStream output = System.IO.File.OpenWrite(targetIcoPath);
+        await using System.IO.BinaryWriter iconWriter = new(output);
 
         // Write ICO header.
         iconWriter.Write((byte)0); // reserved
@@ -136,5 +121,13 @@ public sealed class ProcessImagesTask : AsyncFrostingTask<BuildContext>
 
         // Write image data.
         iconWriter.Write(pngData);
+    }
+
+    private static async Task ResizePngAsync(string sourcePngPath, string targetPngPath, int width, int height)
+    {
+        using Image image = await Image.LoadAsync(sourcePngPath);
+        using Image resizedImage = image.Clone(ctx => ctx.Resize(width, height));
+
+        await resizedImage.SaveAsync(targetPngPath, new PngEncoder());
     }
 }
