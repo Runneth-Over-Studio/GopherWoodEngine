@@ -115,7 +115,7 @@ internal unsafe sealed class VulkanGraphicsDevice : IGraphicsDevice
             string[] extensions = SilkMarshal.PtrToStringArray((nint)glfwExtensions, (int)glfwExtensionCount);
             if (_enableValidationLayers)
             {
-                extensions = extensions.Append(ExtDebugUtils.ExtensionName).ToArray();
+                extensions = [.. extensions, ExtDebugUtils.ExtensionName];
             }
 
             createInfo = new()
