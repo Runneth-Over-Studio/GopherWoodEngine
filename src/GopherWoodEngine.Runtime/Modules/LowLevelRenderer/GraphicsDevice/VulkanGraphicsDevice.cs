@@ -187,9 +187,9 @@ internal unsafe sealed class VulkanGraphicsDevice : IGraphicsDevice
         _logger.LogDebug("... GPU Driver Version: {v}", $"{driverMajor}.{driverMinor}.{driverPatch}");
         _logger.LogDebug("... Vulkan Version: {v}", $"{vulkanMajor}.{vulkanMinor}.{vulkanPatch}");
         _logger.LogDebug("... Graphics Family Index: {i}", _presenter.Devices.QueueFamilyIndices.GraphicsIndex.ToString() ?? "<Not Found>");
-        _logger.LogDebug("... Compute Family Index: {i}", _presenter.Devices.QueueFamilyIndices.ComputeIndex.ToString() ?? "<Not Found>");
-        _logger.LogDebug("... Transfer Family Index: {i}", _presenter.Devices.QueueFamilyIndices.TransferIndex.ToString() ?? "<Not Found>");
         _logger.LogDebug("... Present Family Index: {i}", _presenter.Devices.QueueFamilyIndices.PresentIndex.ToString() ?? "<Not Found>");
+        _logger.LogDebug("... Compute Family Index: {i}", _presenter.Devices.QueueFamilyIndices.ComputeIndex?.ToString() ?? "<Not Found>");
+        _logger.LogDebug("... Transfer Family Index: {i}", _presenter.Devices.QueueFamilyIndices.TransferIndex?.ToString() ?? "<Not Found>");
     }
 
     public void Dispose()

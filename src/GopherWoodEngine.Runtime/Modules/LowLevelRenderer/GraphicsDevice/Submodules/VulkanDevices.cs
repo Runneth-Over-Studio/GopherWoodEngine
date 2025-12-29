@@ -1,4 +1,5 @@
 ﻿using Silk.NET.Core.Native;
+using Silk.NET.OpenAL;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 using System;
@@ -41,7 +42,7 @@ internal unsafe sealed class VulkanDevices : IDisposable
 
         PhysicalDevice = physicalDevice;
         QueueFamilyIndices = indices;
-        LogicalDevice = CreateLogicalDevice(vk, physicalDevice, indices.GraphicsIndex, indices.PresentIndex, surface, enableValidationLayers);
+        LogicalDevice = CreateLogicalDevice(vk, physicalDevice, QueueFamilyIndices, surface, enableValidationLayers);
 
         vk.GetDeviceQueue(LogicalDevice, indices.GraphicsIndex, 0, out Queue graphicsQueue);
         vk.GetDeviceQueue(LogicalDevice, indices.PresentIndex, 0, out Queue presentQueue);
@@ -61,19 +62,25 @@ internal unsafe sealed class VulkanDevices : IDisposable
 
         foreach (PhysicalDevice device in vk.GetPhysicalDevices(instance))
         {
+            if (device.Handle == 0)
+            {
+                continue;
+            }
+
             if (IsDeviceSuitable(vk, device, surface))
             {
-                queueFamily = FindQueueFamilies(vk, device, surface);
+                QueueFamilyIndices? currentQueueFamily = FindQueueFamilies(vk, device, surface);
 
-                if (queueFamily != null)
+                if (currentQueueFamily != null && (physicalDevice == null || (GetNumberOfOptionalIndices(currentQueueFamily) > GetNumberOfOptionalIndices(queueFamily))))
                 {
                     physicalDevice = device;
+                    queueFamily = currentQueueFamily;
                     break;
                 }
             }
         }
 
-        if (queueFamily == null || physicalDevice == null || physicalDevice.Value.Handle == 0)
+        if (queueFamily == null || physicalDevice == null)
         {
             throw new Exception("Failed to find a suitable GPU.");
         }
@@ -92,7 +99,9 @@ internal unsafe sealed class VulkanDevices : IDisposable
             swapChainAdequate = swapChainSupport.Formats.Length != 0 && swapChainSupport.PresentModes.Length != 0;
         }
 
-        return extensionsSupported && swapChainAdequate;
+        vk.GetPhysicalDeviceFeatures(physicalDevice, out PhysicalDeviceFeatures supportedFeatures);
+
+        return extensionsSupported && swapChainAdequate && supportedFeatures.SamplerAnisotropy;
     }
 
     private static bool CheckDeviceExtensionsSupport(Vk vk, PhysicalDevice physicalDevice)
@@ -111,7 +120,7 @@ internal unsafe sealed class VulkanDevices : IDisposable
         return GetRequiredDeviceExtensions().All(availableExtensionNames.Contains);
     }
 
-    private static QueueFamilyIndices FindQueueFamilies(Vk vk, PhysicalDevice physicalDevice, VulkanSurface surface)
+    private static QueueFamilyIndices? FindQueueFamilies(Vk vk, PhysicalDevice physicalDevice, VulkanSurface surface)
     {
         uint? graphicsIndex = null;
         uint? presentIndex = null;
@@ -137,15 +146,15 @@ internal unsafe sealed class VulkanDevices : IDisposable
                 usedIndices.Add(i);
             }
 
-            if ((computeIndex == null || !usedIndices.Contains(i)) && queueFamily.QueueFlags.HasFlag(QueueFlags.ComputeBit))
-            {
-                computeIndex = i;
-                usedIndices.Add(i);
-            }
-
             if ((presentIndex == null || !usedIndices.Contains(i)) && surface.PresentIsSupported(physicalDevice, i))
             {
                 presentIndex = i;
+                usedIndices.Add(i);
+            }
+
+            if ((computeIndex == null || !usedIndices.Contains(i)) && queueFamily.QueueFlags.HasFlag(QueueFlags.ComputeBit))
+            {
+                computeIndex = i;
                 usedIndices.Add(i);
             }
 
@@ -158,24 +167,46 @@ internal unsafe sealed class VulkanDevices : IDisposable
             i++;
         }
 
-        if (graphicsIndex == null || presentIndex == null || computeIndex == null || transferIndex == null)
+        if (graphicsIndex == null || presentIndex == null)
         {
-            throw new Exception("Failed to find required queue families.");
+            return null;
         }
 
         return new QueueFamilyIndices()
         {
             GraphicsIndex = graphicsIndex.Value,
             PresentIndex = presentIndex.Value,
-            ComputeIndex = computeIndex.Value,
-            TransferIndex = transferIndex.Value
+            ComputeIndex = computeIndex,
+            TransferIndex = transferIndex
         };
     }
 
-    private static Device CreateLogicalDevice(Vk vk, PhysicalDevice physicalDevice, uint graphicsIndex, uint presentIndex, VulkanSurface surface, bool enableValidationLayers)
+    private static uint GetNumberOfOptionalIndices(QueueFamilyIndices? queueFamilyIndices)
     {
-        uint[] uniqueQueueFamilies = [graphicsIndex, presentIndex];
-        uniqueQueueFamilies = [.. uniqueQueueFamilies.Distinct()];
+        if (queueFamilyIndices == null)
+        {
+            return 0;
+        }
+
+        uint count = 0;
+        if (queueFamilyIndices.Value.ComputeIndex != null) { count++; }
+        if (queueFamilyIndices.Value.TransferIndex != null) { count++; }
+
+        return count;
+    }
+
+    private static Device CreateLogicalDevice(Vk vk, PhysicalDevice physicalDevice, QueueFamilyIndices indices, VulkanSurface surface, bool enableValidationLayers)
+    {
+        List<uint> queueFamiliesList = [indices.GraphicsIndex, indices.PresentIndex];
+        if (indices.ComputeIndex.HasValue)
+        {
+            queueFamiliesList.Add(indices.ComputeIndex.Value);
+        }
+        if (indices.TransferIndex.HasValue)
+        {
+            queueFamiliesList.Add(indices.TransferIndex.Value);
+        }
+        uint[] uniqueQueueFamilies = [.. queueFamiliesList.Distinct()];
 
         using GlobalMemory globalMemory = GlobalMemory.Allocate(uniqueQueueFamilies.Length * sizeof(DeviceQueueCreateInfo));
         DeviceQueueCreateInfo* queueCreateInfo = (DeviceQueueCreateInfo*)Unsafe.AsPointer(ref globalMemory.GetPinnableReference());
@@ -193,7 +224,10 @@ internal unsafe sealed class VulkanDevices : IDisposable
         }
 
         string[] deviceExtensions = GetRequiredDeviceExtensions();
-        PhysicalDeviceFeatures deviceFeatures = new();
+        PhysicalDeviceFeatures deviceFeatures = new()
+        {
+            SamplerAnisotropy = true
+        };
 
         DeviceCreateInfo createInfo = new()
         {
@@ -248,10 +282,12 @@ internal unsafe sealed class VulkanDevices : IDisposable
     }
 }
 
-internal struct QueueFamilyIndices
+internal readonly struct QueueFamilyIndices
 {
-    public uint GraphicsIndex { get; set; }
-    public uint PresentIndex { get; set; }
-    public uint ComputeIndex { get; set; }
-    public uint TransferIndex { get; set; }
+    // Update GetNumberOfQueueFamilies method if indices change.
+
+    public required uint GraphicsIndex { get; init; }
+    public required uint PresentIndex { get; init; }
+    public uint? ComputeIndex { get; init; }
+    public uint? TransferIndex { get; init; }
 }

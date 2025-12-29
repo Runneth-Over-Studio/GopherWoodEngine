@@ -69,7 +69,7 @@ internal unsafe sealed class VulkanPresenter : IDisposable
         _swapChain.CleanUpSwapChain();
         _sync.CleanUpBuffers();
 
-        _swapChain.ResetSwapChain();
+        _swapChain.ResetSwapChain(framebufferSize);
         _pipeline.ResetSwapChain(_swapChain);
         _sync.ResetBuffers();
     }
