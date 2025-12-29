@@ -1,5 +1,6 @@
 ﻿using GopherWoodEngine.Runtime.Modules;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Sinks.SystemConsole.Themes;
 using System;
@@ -43,6 +44,7 @@ internal static class EngineBuilder
     [Conditional("RELEASE")]
     private static void AddReleaseLogging(this IServiceCollection services)
     {
-        services.AddLogging(); // No providers, but still registers ILogger<T>
+        // No providers or enabled log-levels (zero performance overhead from logging infrastructure), but still registers ILogger<T>
+        services.AddLogging(configure => configure.SetMinimumLevel(LogLevel.None)); 
     }
 }

@@ -33,7 +33,7 @@ internal unsafe sealed class VulkanPresenter : IDisposable
         _pipeline = new VulkanPipeline(vk, Devices.LogicalDevice, _swapChain, _descriptorSetLayout);
         _sync = new VulkanSynchronization(vk, Devices, _swapChain, _pipeline, Devices.QueueFamilyIndices.GraphicsIndex);
 
-        _window.Resize += OnWindowResize;
+        _window.FramebufferResize += OnFramebufferResize;
     }
 
     internal void DrawFrame(double delta)
@@ -74,7 +74,7 @@ internal unsafe sealed class VulkanPresenter : IDisposable
         _sync.ResetBuffers();
     }
 
-    private void OnWindowResize(Vector2D<int> obj)
+    private void OnFramebufferResize(Vector2D<int> obj)
     {
         _frameBufferResized = true;
     }
@@ -117,7 +117,7 @@ internal unsafe sealed class VulkanPresenter : IDisposable
         {
             if (disposing)
             {
-                _window.Resize -= OnWindowResize;
+                _window.FramebufferResize -= OnFramebufferResize;
 
                 _sync.Dispose();
                 _pipeline.Dispose();

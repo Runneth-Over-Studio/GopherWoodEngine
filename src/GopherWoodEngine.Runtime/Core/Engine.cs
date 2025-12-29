@@ -34,11 +34,12 @@ public class Engine : IDisposable
     public Engine(GameBase game)
     {
         _services = EngineBuilder.Build(game.EngineConfig);
-        EventSystem = _services.GetRequiredService<IEventSystem>();
         _graphicsDevice = _services.GetRequiredService<IGraphicsDevice>();
         _physicalDeviceIO = _services.GetRequiredService<IPhysicalDeviceIO>();
         _logger = _services.GetRequiredService<ILogger<Engine>>();
         _game = game;
+
+        EventSystem = _services.GetRequiredService<IEventSystem>();
 
         _graphicsDevice.HookWindowEvents(EventSystem);
         EventSystem.Subscribe<WindowUpdateEventArgs>(OnUpdate);

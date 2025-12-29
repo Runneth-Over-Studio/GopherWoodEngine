@@ -166,6 +166,11 @@ internal unsafe sealed class VulkanGraphicsDevice : IGraphicsDevice
 
     private void LogGraphicsDeviceInfo()
     {
+        if (!_logger.IsEnabled(LogLevel.Debug))
+        {
+            return;
+        }
+
         _vk.GetPhysicalDeviceProperties(_presenter.Devices.PhysicalDevice, out PhysicalDeviceProperties properties);
 
         int driverMajor = (int)((properties.DriverVersion >> 22) & 0x3FF);
