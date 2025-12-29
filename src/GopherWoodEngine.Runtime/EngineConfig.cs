@@ -1,4 +1,4 @@
-﻿using System;
+﻿using GopherWoodEngine.Runtime.Modules;
 
 namespace GopherWoodEngine.Runtime;
 
@@ -21,4 +21,14 @@ public record EngineConfig
     /// Design height of the game window, in pixels.
     /// </summary>
     public int Height { get; set; } = 720;
+
+    /// <summary>
+    /// Gets or sets the seed value used to initialize a deterministic random number generator.
+    /// </summary>
+    /// <remarks>
+    /// If the value is null, a default seed is used.
+    /// To use the deterministic random number generator in your game systems,
+    /// inject <see cref="IRandomNumberGenerator"/> with <c>[FromKeyedServices("Deterministic")]</c> attribute.
+    /// </remarks>
+    public int? RandomSeed { get; set; } = null;
 }

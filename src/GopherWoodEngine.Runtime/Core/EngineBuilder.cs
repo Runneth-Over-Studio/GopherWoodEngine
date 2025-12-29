@@ -17,7 +17,9 @@ internal static class EngineBuilder
         // Core Systems
         services.AddDebugLogging();
         services.AddReleaseLogging();
-        services.AddSingleton<IRandomNumberGenerator, RandomNumberGenerator>();
+        services.AddKeyedSingleton<IRandomNumberGenerator, RandomNumberGenerator>("ThreadSafe", (sp, key) => new RandomNumberGenerator(seed: null));
+        services.AddKeyedSingleton<IRandomNumberGenerator, RandomNumberGenerator>("Deterministic", (sp, key) => new RandomNumberGenerator(seed: engineConfig.RandomSeed ?? 0));
+        services.AddSingleton(sp => sp.GetRequiredKeyedService<IRandomNumberGenerator>("ThreadSafe")); // Register default (non-keyed) - resolves to ThreadSafe by default
 
         // Gameplay Foundations
         services.AddSingleton<IEventSystem, EventSystem>();
