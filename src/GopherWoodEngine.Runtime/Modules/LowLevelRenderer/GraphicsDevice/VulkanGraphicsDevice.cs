@@ -96,14 +96,13 @@ internal unsafe sealed class VulkanGraphicsDevice : IGraphicsDevice
         VulkanDebugger.CheckValidationLayerSupport(_vk, $"{VK_VERSION_MAJOR}.{VK_VERSION_MINOR}");
 
         Instance? vulkanInstance = null;
-        Version? engineVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version();
+        Version engineVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version();
         InstanceCreateInfo createInfo = new();
 
         ApplicationInfo appInfo = new()
         {
             SType = StructureType.ApplicationInfo,
             PApplicationName = (byte*)Marshal.StringToHGlobalAnsi(engineConfig.Title),
-            ApplicationVersion = new Version32(1, 0, 0),
             PEngineName = (byte*)Marshal.StringToHGlobalAnsi("Gopher Wood Engine"),
             EngineVersion = new Version32(Convert.ToUInt32(Math.Abs(engineVersion.Major)), Convert.ToUInt32(Math.Abs(engineVersion.Minor)), Convert.ToUInt32(Math.Abs(engineVersion.Revision))),
             ApiVersion = new Version32(VK_VERSION_MAJOR, VK_VERSION_MINOR, 0)
