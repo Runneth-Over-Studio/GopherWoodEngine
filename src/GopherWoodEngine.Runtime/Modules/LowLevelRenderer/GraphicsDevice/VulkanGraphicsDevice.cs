@@ -92,8 +92,6 @@ internal unsafe sealed class VulkanGraphicsDevice : IGraphicsDevice
 
     private Instance CreateInstance(EngineConfig engineConfig)
     {
-        VulkanDebugger.CheckValidationLayerSupport(_vk, $"{VK_VERSION_MAJOR}.{VK_VERSION_MINOR}");
-
         Instance? vulkanInstance = null;
         Version engineVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version();
         InstanceCreateInfo createInfo = new();
@@ -128,6 +126,7 @@ internal unsafe sealed class VulkanGraphicsDevice : IGraphicsDevice
 
             if (_enableValidationLayers)
             {
+                VulkanDebugger.CheckValidationLayerSupport(_vk, $"{VK_VERSION_MAJOR}.{VK_VERSION_MINOR}");
                 string[] validationLayers = VulkanDebugger.GetEnabledLayerNames();
                 DebugUtilsMessengerCreateInfoEXT debugCreateInfo = new();
                 VulkanDebugger.PopulateDebugMessengerCreateInfo(ref debugCreateInfo, _logger);

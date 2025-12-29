@@ -48,6 +48,6 @@ internal static class EngineBuilder
     private static void AddReleaseLogging(this IServiceCollection services)
     {
         // No providers or enabled log-levels (zero performance overhead from logging infrastructure), but still registers ILogger<T>
-        services.AddLogging(configure => configure.SetMinimumLevel(LogLevel.None)); 
+        services.AddLogging(configure => configure.SetMinimumLevel(LogLevel.None));
     }
 }

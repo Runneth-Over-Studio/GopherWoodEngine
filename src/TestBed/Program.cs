@@ -30,7 +30,9 @@ internal class Program
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLineInterpolated($"[red]An unexpected error occurred.[/] {ex}");
+            AnsiConsole.MarkupLine("[red]An unexpected error occurred.[/]");
+            AnsiConsole.WriteLine(ex.Message);
+            AnsiConsole.WriteLine(ex.StackTrace ?? string.Empty);
             AnsiConsole.WriteLine(ex.StackTrace ?? string.Empty);
             exitCode = 1;
         }
