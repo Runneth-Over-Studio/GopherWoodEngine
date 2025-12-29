@@ -17,6 +17,7 @@ internal static class EngineBuilder
         // Core Systems
         services.AddDebugLogging();
         services.AddReleaseLogging();
+        services.AddSingleton<IRandomNumberGenerator, RandomNumberGenerator>();
 
         // Gameplay Foundations
         services.AddSingleton<IEventSystem, EventSystem>();
