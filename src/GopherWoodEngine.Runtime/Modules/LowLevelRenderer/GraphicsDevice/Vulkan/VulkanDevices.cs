@@ -9,7 +9,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Device = Silk.NET.Vulkan.Device;
 
-namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submodules;
+namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Vulkan;
 
 internal unsafe sealed class VulkanDevices : IDisposable
 {

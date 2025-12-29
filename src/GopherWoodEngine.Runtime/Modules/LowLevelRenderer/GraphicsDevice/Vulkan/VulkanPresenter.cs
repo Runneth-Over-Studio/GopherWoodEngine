@@ -3,7 +3,7 @@ using Silk.NET.Vulkan;
 using Silk.NET.Windowing;
 using System;
 
-namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submodules;
+namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Vulkan;
 
 internal unsafe sealed class VulkanPresenter : IDisposable
 {

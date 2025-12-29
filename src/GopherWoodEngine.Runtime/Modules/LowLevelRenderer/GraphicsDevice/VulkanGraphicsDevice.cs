@@ -1,4 +1,4 @@
-﻿using GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submodules;
+﻿using GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Vulkan;
 using Microsoft.Extensions.Logging;
 using Silk.NET.Core;
 using Silk.NET.Core.Native;

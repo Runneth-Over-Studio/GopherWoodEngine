@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using Device = Silk.NET.Vulkan.Device;
 
-namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Submodules;
+namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Vulkan;
 
 internal unsafe sealed class VulkanSwapChain : IDisposable
 {
