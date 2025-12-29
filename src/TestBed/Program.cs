@@ -33,7 +33,6 @@ internal class Program
             AnsiConsole.MarkupLine("[red]An unexpected error occurred.[/]");
             AnsiConsole.WriteLine(ex.Message);
             AnsiConsole.WriteLine(ex.StackTrace ?? string.Empty);
-            AnsiConsole.WriteLine(ex.StackTrace ?? string.Empty);
             exitCode = 1;
         }
         finally
