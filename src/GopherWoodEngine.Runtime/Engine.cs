@@ -25,7 +25,7 @@ public class Engine : IDisposable
     private readonly GameBase _game;
     private bool _isRunning = true;
     private bool _isSuspended = false;
-    private bool _disposed = false;
+    private bool _isDisposed = false;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Engine"/> class, setting up the core services and event
@@ -106,7 +106,7 @@ public class Engine : IDisposable
     /// </summary>
     protected virtual void Dispose(bool disposing)
     {
-        if (!_disposed)
+        if (!_isDisposed)
         {
             if (disposing)
             {
@@ -120,7 +120,7 @@ public class Engine : IDisposable
                 Serilog.Log.CloseAndFlush();
             }
 
-            _disposed = true;
+            _isDisposed = true;
         }
     }
 }
