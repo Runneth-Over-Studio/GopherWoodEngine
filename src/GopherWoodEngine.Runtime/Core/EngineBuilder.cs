@@ -25,7 +25,8 @@ internal static class EngineBuilder
         services.AddSingleton<IEventSystem, EventSystem>();
 
         // Low-Level Renderer
-        services.AddSingleton<IGraphicsDevice>(sp => ActivatorUtilities.CreateInstance<VulkanGraphicsDevice>(sp, engineConfig));
+        services.AddSingleton<IVirtualScreen>(sp => ActivatorUtilities.CreateInstance<VulkanVirtualScreen>(sp, engineConfig));
+        services.AddSingleton<IGraphicsDevice, VulkanGraphicsDevice>();
 
         // Human Interface Device
         services.AddSingleton<IPhysicalDeviceIO, PhysicalDeviceIO>();

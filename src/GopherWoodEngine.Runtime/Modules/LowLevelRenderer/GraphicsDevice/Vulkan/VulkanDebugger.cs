@@ -17,7 +17,7 @@ internal unsafe sealed class VulkanDebugger : IDisposable
     private readonly ExtDebugUtils? _utils;
     private bool _disposed = false;
 
-    public VulkanDebugger(Instance instance, Vk vk, ILogger<IGraphicsDevice> logger)
+    public VulkanDebugger(Instance instance, Vk vk, ILogger<VulkanDebugger> logger)
     {
         _instance = instance;
         _utils = GetExtDebugUtils(_instance, vk);
@@ -54,7 +54,7 @@ internal unsafe sealed class VulkanDebugger : IDisposable
     }
 
     // Fill in <see cref="DebugUtilsMessengerCreateInfoEXT"/> structure with details about the messenger and its callback.
-    internal static void PopulateDebugMessengerCreateInfo(ref DebugUtilsMessengerCreateInfoEXT createInfo, ILogger<IGraphicsDevice> logger)
+    internal static void PopulateDebugMessengerCreateInfo(ref DebugUtilsMessengerCreateInfoEXT createInfo, ILogger<VulkanDebugger> logger)
     {
         createInfo.SType = StructureType.DebugUtilsMessengerCreateInfoExt;
 
@@ -87,9 +87,11 @@ internal unsafe sealed class VulkanDebugger : IDisposable
 
         // Retrieve the logger from pUserData.
         GCHandle handle = GCHandle.FromIntPtr((nint)pUserData);
-        ILogger<IGraphicsDevice>? logger = handle.Target as ILogger<IGraphicsDevice>;
 
-        logger?.Log(logLevel, "Vulkan: {message}", Marshal.PtrToStringAnsi((nint)pCallbackData->PMessage));
+        if (logLevel != LogLevel.None && handle.Target is ILogger<VulkanDebugger> logger && logger.IsEnabled(logLevel))
+        {
+            logger.Log(logLevel, "Vulkan: {message}", Marshal.PtrToStringAnsi((nint)pCallbackData->PMessage));
+        }
 
         return Vk.False; // False means don't abort with the VK_ERROR_VALIDATION_FAILED_EXT error.
     }
@@ -104,7 +106,7 @@ internal unsafe sealed class VulkanDebugger : IDisposable
         return null;
     }
 
-    private static DebugUtilsMessengerEXT? CreateDebugMessenger(ExtDebugUtils? utils, Instance instance, ILogger<IGraphicsDevice> logger)
+    private static DebugUtilsMessengerEXT? CreateDebugMessenger(ExtDebugUtils? utils, Instance instance, ILogger<VulkanDebugger> logger)
     {
         if (utils != null)
         {

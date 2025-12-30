@@ -1,4 +1,5 @@
-﻿using Silk.NET.Maths;
+﻿using GopherWoodEngine.Runtime.Modules.LowLevelRenderer.VirtualScreen.Vulkan;
+using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using Silk.NET.Windowing;
 using System;
@@ -17,21 +18,22 @@ internal unsafe sealed class VulkanPresenter : IDisposable
     private readonly VulkanSwapChain _swapChain;
     private readonly DescriptorSetLayout _descriptorSetLayout;
     private readonly VulkanPipeline _pipeline;
-    private readonly VulkanSynchronization _sync;
+    private readonly VulkanFrameContext _frameContext;
     private int _currentFrame = 0;
     private bool _frameBufferResized = false;
     private bool _disposed = false;
 
-    public VulkanPresenter(IWindow window, Vk vk, Instance instance, bool enableValidationLayers)
+    public VulkanPresenter(VulkanVirtualScreen virtualScreen)
     {
-        _window = window;
-        _vk = vk;
-        _surface = new VulkanSurface(window, vk, instance);
-        Devices = new VulkanDevices(vk, instance, _surface, enableValidationLayers);
-        _swapChain = new VulkanSwapChain(vk, instance, _surface, Devices, window.FramebufferSize);
+        Devices = new VulkanDevices(virtualScreen);
+
+        _window = virtualScreen.Window;
+        _vk = virtualScreen.Vk;
+        _surface = virtualScreen.Surface;
+        _swapChain = new VulkanSwapChain(_vk, virtualScreen.Instance, _surface, Devices, _window.FramebufferSize);
         _descriptorSetLayout = CreateDescriptorSetLayout(_vk, Devices.LogicalDevice);
-        _pipeline = new VulkanPipeline(vk, Devices.LogicalDevice, _swapChain, _descriptorSetLayout);
-        _sync = new VulkanSynchronization(vk, Devices, _swapChain, _pipeline, Devices.QueueFamilyIndices.GraphicsIndex);
+        _pipeline = new VulkanPipeline(_vk, Devices.LogicalDevice, _swapChain, _descriptorSetLayout);
+        _frameContext = new VulkanFrameContext(_vk, Devices, _swapChain, _pipeline, Devices.QueueFamilyIndices.GraphicsIndex);
 
         _window.FramebufferResize += OnFramebufferResize;
     }
@@ -41,7 +43,7 @@ internal unsafe sealed class VulkanPresenter : IDisposable
         //Silk Window has timing information so we are skipping the time code.
         float time = (float)_window.Time;
 
-        bool presentSuccessful = _sync.Present(time, Devices.GraphicsQueue, Devices.PresentQueue, _swapChain, _currentFrame);
+        bool presentSuccessful = _frameContext.Present(time, Devices.GraphicsQueue, Devices.PresentQueue, _swapChain, _currentFrame);
 
         if (!presentSuccessful || _frameBufferResized)
         {
@@ -64,14 +66,18 @@ internal unsafe sealed class VulkanPresenter : IDisposable
 
         _vk.DeviceWaitIdle(Devices.LogicalDevice);
 
-        _sync.CleanUpSwapChain();
+        _frameContext.CleanUpSwapChain();
         _pipeline.CleanUpSwapChain();
         _swapChain.CleanUpSwapChain();
-        _sync.CleanUpBuffers();
+        _frameContext.CleanUpBuffers();
+
+        //TODO: Right now I destroy the SwapChain, above, and then below I create a new one.
+        //      A later optimization is to pass the old swapchain handle into the create call
+        //      (OldSwapchain property of SwapchainCreateInfoKHR) and destroy it after successful creation.
 
         _swapChain.ResetSwapChain(framebufferSize);
         _pipeline.ResetSwapChain(_swapChain);
-        _sync.ResetBuffers();
+        _frameContext.ResetBuffers();
     }
 
     private void OnFramebufferResize(Vector2D<int> obj)
@@ -119,12 +125,11 @@ internal unsafe sealed class VulkanPresenter : IDisposable
             {
                 _window.FramebufferResize -= OnFramebufferResize;
 
-                _sync.Dispose();
+                _frameContext.Dispose();
                 _pipeline.Dispose();
                 _vk.DestroyDescriptorSetLayout(Devices.LogicalDevice, _descriptorSetLayout, null);
                 _swapChain.Dispose();
                 Devices.Dispose();
-                _surface.Dispose();
             }
 
             _disposed = true;

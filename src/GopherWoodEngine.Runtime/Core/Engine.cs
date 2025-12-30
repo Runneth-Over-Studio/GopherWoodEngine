@@ -19,6 +19,7 @@ public class Engine : IDisposable
     public IEventSystem EventSystem { get; }
 
     private readonly IServiceProvider _services;
+    private readonly IVirtualScreen _virtualScreen;
     private readonly IGraphicsDevice _graphicsDevice;
     private readonly IPhysicalDeviceIO _physicalDeviceIO;
     private readonly ILogger<Engine> _logger;
@@ -34,6 +35,7 @@ public class Engine : IDisposable
     public Engine(GameBase game)
     {
         _services = EngineBuilder.Build(game.EngineConfig);
+        _virtualScreen = _services.GetRequiredService<IVirtualScreen>();
         _graphicsDevice = _services.GetRequiredService<IGraphicsDevice>();
         _physicalDeviceIO = _services.GetRequiredService<IPhysicalDeviceIO>();
         _logger = _services.GetRequiredService<ILogger<Engine>>();
@@ -41,7 +43,7 @@ public class Engine : IDisposable
 
         EventSystem = _services.GetRequiredService<IEventSystem>();
 
-        _graphicsDevice.HookWindowEvents(EventSystem);
+        _virtualScreen.HookWindowEvents(EventSystem);
         EventSystem.Subscribe<WindowUpdateEventArgs>(OnUpdate);
         EventSystem.Subscribe<WindowRenderEventArgs>(OnRender);
         EventSystem.Subscribe<WindowResizeEventArgs>(OnResize);
@@ -57,7 +59,7 @@ public class Engine : IDisposable
     {
         _logger.LogDebug("Initiating game loop...");
 
-        _graphicsDevice.InitiateWindowMessageLoop();
+        _virtualScreen.RunWindowMessageLoop();
 
         _logger.LogDebug("Exited game loop.");
     }
@@ -106,8 +108,10 @@ public class Engine : IDisposable
         {
             if (disposing)
             {
-                EventSystem.Dispose();
+                _isRunning = false;
+
                 _graphicsDevice.Dispose();
+                EventSystem.Dispose();
 
                 _logger.LogDebug("Engine disposed.");
 

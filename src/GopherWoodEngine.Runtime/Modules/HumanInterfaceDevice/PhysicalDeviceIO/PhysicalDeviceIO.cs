@@ -8,9 +8,9 @@ internal sealed class PhysicalDeviceIO : IPhysicalDeviceIO
 {
     public IInputContext InputContext { get; }
 
-    public PhysicalDeviceIO(IGraphicsDevice graphicsDevice, IEventSystem eventSystem)
+    public PhysicalDeviceIO(IVirtualScreen virtualScreen, IEventSystem eventSystem)
     {
-        InputContext = graphicsDevice.CreateWindowInputContext();
+        InputContext = virtualScreen.CreateWindowInputContext();
 
         InputContext.ConnectionChanged += (device, connected) => eventSystem.Publish(this, new InputDeviceConnectionChangedEventArgs(device, connected));
         HookGamepadEvents(InputContext.Gamepads, eventSystem);

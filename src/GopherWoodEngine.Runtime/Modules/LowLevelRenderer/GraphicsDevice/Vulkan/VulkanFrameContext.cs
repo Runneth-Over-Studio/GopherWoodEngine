@@ -1,13 +1,14 @@
 ﻿using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Vulkan;
 
-internal unsafe sealed class VulkanSynchronization : IDisposable
+internal unsafe sealed class VulkanFrameContext : IDisposable
 {
     private const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -16,7 +17,6 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
     private readonly VulkanSwapChain _swapChain;
     private readonly VulkanPipeline _pipeline;
     private readonly CommandPool _commandPool;
-    private readonly DescriptorSetLayout _descriptorSetLayout;
     private readonly Vertex[] _vertices;
     private readonly ushort[] _indices;
     private readonly Buffer _vertexBuffer;
@@ -35,7 +35,7 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
     private Fence[] _imagesInFlight;
     private bool _disposed = false;
 
-    public VulkanSynchronization(Vk vk, VulkanDevices devices, VulkanSwapChain swapChain, VulkanPipeline pipeline, uint queueFamilyGraphicsIndex)
+    public VulkanFrameContext(Vk vk, VulkanDevices devices, VulkanSwapChain swapChain, VulkanPipeline pipeline, uint queueFamilyGraphicsIndex)
     {
         _vk = vk;
         _devices = devices;
@@ -44,7 +44,6 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
 
         _framebuffers = CreateFramebuffers(vk, devices.LogicalDevice, swapChain, pipeline.RenderPass);
         _commandPool = CreateCommandPool(vk, devices.LogicalDevice, queueFamilyGraphicsIndex);
-        _descriptorSetLayout = pipeline.DescriptorSetLayout;
 
         _vertices =
         [
@@ -176,11 +175,11 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
 
         (_uniformBuffers, _uniformBuffersMemory) = CreateUniformBuffers();
         _descriptorPool = CreateDescriptorPool(_vk, _devices.LogicalDevice, _swapChain.Images.Length);
-        _descriptorSets = CreateDescriptorSets(_vk, _devices.LogicalDevice, _swapChain.Images.Length, _descriptorSetLayout, _uniformBuffers, _descriptorPool);
+        _descriptorSets = CreateDescriptorSets(_vk, _devices.LogicalDevice, _swapChain.Images.Length, _pipeline.DescriptorSetLayout, _uniformBuffers, _descriptorPool);
 
         _commandBuffers = CreateCommandBuffers();
 
-        _imagesInFlight = new Fence[_swapChain.Images.Length];
+        _imagesInFlight = new Fence[_swapChain.Images.Length]; // all default handles
     }
 
     private void SetSyncObjects()
@@ -209,6 +208,8 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
 
     private CommandBuffer[] CreateCommandBuffers()
     {
+        Debug.Assert(_descriptorSets.Length == _framebuffers.Length);
+
         CommandBuffer[] commandBuffers = new CommandBuffer[_framebuffers.Length];
 
         CommandBufferAllocateInfo allocInfo = new()
@@ -490,17 +491,17 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
         {
             if (disposing)
             {
-                for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+                foreach (Framebuffer framebuffer in _framebuffers)
                 {
-                    _vk.DestroySemaphore(_devices.LogicalDevice, _renderFinishedSemaphores![i], null);
-                    _vk.DestroySemaphore(_devices.LogicalDevice, _imageAvailableSemaphores![i], null);
-                    _vk.DestroyFence(_devices.LogicalDevice, _inFlightFences![i], null);
+                    _vk.DestroyFramebuffer(_devices.LogicalDevice, framebuffer, null);
                 }
 
                 fixed (CommandBuffer* commandBuffersPtr = _commandBuffers)
                 {
                     _vk.FreeCommandBuffers(_devices.LogicalDevice, _commandPool, (uint)_commandBuffers.Length, commandBuffersPtr);
                 }
+
+                _vk.DestroyCommandPool(_devices.LogicalDevice, _commandPool, null);
 
                 _vk.DestroyDescriptorPool(_devices.LogicalDevice, _descriptorPool, null);
 
@@ -510,17 +511,17 @@ internal unsafe sealed class VulkanSynchronization : IDisposable
                     _vk.FreeMemory(_devices.LogicalDevice, _uniformBuffersMemory[i], null);
                 }
 
-                _vk.DestroyBuffer(_devices.LogicalDevice, _indexBuffer, null);
-                _vk.FreeMemory(_devices.LogicalDevice, _indexBufferMemory, null);
-
                 _vk.DestroyBuffer(_devices.LogicalDevice, _vertexBuffer, null);
                 _vk.FreeMemory(_devices.LogicalDevice, _vertexBufferMemory, null);
 
-                _vk.DestroyCommandPool(_devices.LogicalDevice, _commandPool, null);
+                _vk.DestroyBuffer(_devices.LogicalDevice, _indexBuffer, null);
+                _vk.FreeMemory(_devices.LogicalDevice, _indexBufferMemory, null);
 
-                foreach (Framebuffer framebuffer in _framebuffers)
+                for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
                 {
-                    _vk.DestroyFramebuffer(_devices.LogicalDevice, framebuffer, null);
+                    _vk.DestroySemaphore(_devices.LogicalDevice, _renderFinishedSemaphores![i], null);
+                    _vk.DestroySemaphore(_devices.LogicalDevice, _imageAvailableSemaphores![i], null);
+                    _vk.DestroyFence(_devices.LogicalDevice, _inFlightFences![i], null);
                 }
             }
 

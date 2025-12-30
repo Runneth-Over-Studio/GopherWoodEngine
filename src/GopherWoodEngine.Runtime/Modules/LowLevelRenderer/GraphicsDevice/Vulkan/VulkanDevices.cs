@@ -1,5 +1,5 @@
-﻿using Silk.NET.Core.Native;
-using Silk.NET.OpenAL;
+﻿using GopherWoodEngine.Runtime.Modules.LowLevelRenderer.VirtualScreen.Vulkan;
+using Silk.NET.Core.Native;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 using System;
@@ -34,18 +34,18 @@ internal unsafe sealed class VulkanDevices : IDisposable
     private readonly Vk _vk;
     private bool _disposed = false;
 
-    public VulkanDevices(Vk vk, Instance instance, VulkanSurface surface, bool enableValidationLayers)
+    public VulkanDevices(VulkanVirtualScreen virtualScreen)
     {
-        _vk = vk;
+        _vk = virtualScreen.Vk;
 
-        (PhysicalDevice physicalDevice, QueueFamilyIndices indices) = SelectPhysicalDevice(instance, vk, surface);
+        (PhysicalDevice physicalDevice, QueueFamilyIndices indices) = SelectPhysicalDevice(virtualScreen.Instance, _vk, virtualScreen.Surface);
 
         PhysicalDevice = physicalDevice;
         QueueFamilyIndices = indices;
-        LogicalDevice = CreateLogicalDevice(vk, physicalDevice, QueueFamilyIndices, surface, enableValidationLayers);
+        LogicalDevice = CreateLogicalDevice(_vk, physicalDevice, QueueFamilyIndices, virtualScreen.Surface, virtualScreen.ValidationLayersEnabled);
 
-        vk.GetDeviceQueue(LogicalDevice, indices.GraphicsIndex, 0, out Queue graphicsQueue);
-        vk.GetDeviceQueue(LogicalDevice, indices.PresentIndex, 0, out Queue presentQueue);
+        _vk.GetDeviceQueue(LogicalDevice, indices.GraphicsIndex, 0, out Queue graphicsQueue);
+        _vk.GetDeviceQueue(LogicalDevice, indices.PresentIndex, 0, out Queue presentQueue);
         GraphicsQueue = graphicsQueue;
         PresentQueue = presentQueue;
     }
@@ -195,7 +195,7 @@ internal unsafe sealed class VulkanDevices : IDisposable
         return count;
     }
 
-    private static Device CreateLogicalDevice(Vk vk, PhysicalDevice physicalDevice, QueueFamilyIndices indices, VulkanSurface surface, bool enableValidationLayers)
+    private static Device CreateLogicalDevice(Vk vk, PhysicalDevice physicalDevice, QueueFamilyIndices indices, VulkanSurface surface, bool validationLayersEnabled)
     {
         List<uint> queueFamiliesList = [indices.GraphicsIndex, indices.PresentIndex];
         if (indices.ComputeIndex.HasValue)
@@ -240,7 +240,7 @@ internal unsafe sealed class VulkanDevices : IDisposable
             EnabledLayerCount = 0
         };
 
-        if (enableValidationLayers)
+        if (validationLayersEnabled)
         {
             string[] validationLayers = VulkanDebugger.GetEnabledLayerNames();
             createInfo.EnabledLayerCount = (uint)validationLayers.Length;
@@ -252,7 +252,7 @@ internal unsafe sealed class VulkanDevices : IDisposable
             throw new Exception("Failed to create logical device.");
         }
 
-        if (enableValidationLayers)
+        if (validationLayersEnabled)
         {
             SilkMarshal.Free((nint)createInfo.PpEnabledLayerNames);
         }
