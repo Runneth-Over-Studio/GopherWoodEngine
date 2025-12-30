@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 
-namespace GopherWoodEngine.Runtime.Core;
+namespace GopherWoodEngine.Runtime;
 
 /// <summary>
 /// Represents the core engine responsible for managing the game loop and systems.
@@ -18,7 +18,6 @@ public class Engine : IDisposable
     /// </summary>
     public IEventSystem EventSystem { get; }
 
-    private readonly IServiceProvider _services;
     private readonly IVirtualScreen _virtualScreen;
     private readonly IGraphicsDevice _graphicsDevice;
     private readonly IPhysicalDeviceIO _physicalDeviceIO;
@@ -34,14 +33,17 @@ public class Engine : IDisposable
     /// </summary>
     public Engine(GameBase game)
     {
-        _services = EngineBuilder.Build(game.EngineConfig);
-        _virtualScreen = _services.GetRequiredService<IVirtualScreen>();
-        _graphicsDevice = _services.GetRequiredService<IGraphicsDevice>();
-        _physicalDeviceIO = _services.GetRequiredService<IPhysicalDeviceIO>();
-        _logger = _services.GetRequiredService<ILogger<Engine>>();
+        IServiceCollection services = new ServiceCollection().AddEngineServices(game.EngineConfig);
+        IServiceProvider provider = services.BuildServiceProvider();
+        Ioc.Default.ConfigureServices(provider);
+
+        _virtualScreen = Ioc.Default.GetRequiredService<IVirtualScreen>();
+        _graphicsDevice = Ioc.Default.GetRequiredService<IGraphicsDevice>();
+        _physicalDeviceIO = Ioc.Default.GetRequiredService<IPhysicalDeviceIO>();
+        _logger = Ioc.Default.GetRequiredService<ILogger<Engine>>();
         _game = game;
 
-        EventSystem = _services.GetRequiredService<IEventSystem>();
+        EventSystem = Ioc.Default.GetRequiredService<IEventSystem>();
 
         _virtualScreen.HookWindowEvents(EventSystem);
         EventSystem.Subscribe<WindowUpdateEventArgs>(OnUpdate);
