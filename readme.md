@@ -8,6 +8,19 @@ Development generally follows [Game Engine Architecture](https://www.gameengineb
 > [!WARNING]
 > This engine is in pre-alpha development and subject to significant change.
 
+## Why
+- **Why make a game engine in C#?**
+
+The short answer is simple: if I’m going to commit to a long-term project of this scale, it has to be something I genuinely enjoy working in every day. C# is the ecosystem where I’m most productive and comfortable.
+
+From a technical leadership perspective, C# offers excellent IDE and tooling support, a reduced day-to-day memory management burden, strong type safety, and a mature, feature-rich ecosystem. Modern .NET provides cross-platform support, competitive performance through JIT optimizations, and first-class asynchronous programming models. Just as importantly, C# not being limited to a strictly object-oriented style, supporting functional and data-oriented patterns (immutability, value types, expression-based APIs, and composition) aligns naturally with modern engine design. These traits allow me to focus more on engine architecture and gameplay systems rather than fighting the language or tooling.
+
+- **Why make a game engine at all?**
+
+Years ago, I enjoyed learning Unity, but over time it became clear that relying on a proprietary platform means being subject to corporate licensing decisions and shifting business priorities. Often entirely outside a developer’s control. That dependency runs counter to my long-term goal of creative and technical independence.
+
+I later explored Godot and MonoGame, both of which are excellent projects, but ultimately concluded that building my own technology stack best aligned with how I want to learn, experiment, and create. Gopher Wood Engine exists not as a replacement for existing engines, but as a personal, open-ended platform. One that prioritizes ownership, transparency, and deep understanding of the underlying systems.
+
 ## Versioning
 Gopher Wood Engine uses [Semantic Versioning](https://semver.org/).
 
