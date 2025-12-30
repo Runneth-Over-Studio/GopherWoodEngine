@@ -26,7 +26,7 @@ internal unsafe sealed class VulkanVirtualScreen : IVirtualScreen
     internal VulkanSurface Surface { get; }
     internal bool ValidationLayersEnabled { get; private set; } = false;
 
-    private bool _disposed = false;
+    private bool _isDisposed = false;
 
     public VulkanVirtualScreen(ILogger<VulkanDebugger> vkLogger, EngineConfig engineConfig)
     {
@@ -160,7 +160,7 @@ internal unsafe sealed class VulkanVirtualScreen : IVirtualScreen
 
     internal void Dispose(bool disposing)
     {
-        if (!_disposed)
+        if (!_isDisposed)
         {
             if (disposing)
             {
@@ -170,7 +170,7 @@ internal unsafe sealed class VulkanVirtualScreen : IVirtualScreen
                 Window.Dispose();
             }
 
-            _disposed = true;
+            _isDisposed = true;
         }
     }
 

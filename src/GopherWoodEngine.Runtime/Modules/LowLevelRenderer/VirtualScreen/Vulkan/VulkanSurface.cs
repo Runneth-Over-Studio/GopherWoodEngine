@@ -14,7 +14,7 @@ internal unsafe sealed class VulkanSurface : IDisposable
     private readonly KhrSurface _khrSurface;
     private readonly SurfaceKHR _surfaceKHR;
     private readonly Instance _instance;
-    private bool _disposed = false;
+    private bool _isDisposed = false;
 
     public VulkanSurface(IWindow window, Vk vk, Instance instance)
     {
@@ -107,14 +107,14 @@ internal unsafe sealed class VulkanSurface : IDisposable
 
     internal void Dispose(bool disposing)
     {
-        if (!_disposed)
+        if (!_isDisposed)
         {
             if (disposing)
             {
                 _khrSurface!.DestroySurface(_instance, _surfaceKHR, null);
             }
 
-            _disposed = true;
+            _isDisposed = true;
         }
     }
 }

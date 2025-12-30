@@ -15,7 +15,7 @@ internal unsafe sealed class VulkanDebugger : IDisposable
 
     private readonly Instance _instance;
     private readonly ExtDebugUtils? _utils;
-    private bool _disposed = false;
+    private bool _isDisposed = false;
 
     public VulkanDebugger(Instance instance, Vk vk, ILogger<VulkanDebugger> logger)
     {
@@ -132,14 +132,14 @@ internal unsafe sealed class VulkanDebugger : IDisposable
 
     internal void Dispose(bool disposing)
     {
-        if (!_disposed)
+        if (!_isDisposed)
         {
             if (disposing && _utils != null && Messenger != null)
             {
                 _utils.DestroyDebugUtilsMessenger(_instance, Messenger.Value, null);
             }
 
-            _disposed = true;
+            _isDisposed = true;
         }
     }
 }

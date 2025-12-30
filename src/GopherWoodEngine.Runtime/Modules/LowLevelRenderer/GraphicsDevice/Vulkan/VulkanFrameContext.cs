@@ -33,7 +33,7 @@ internal unsafe sealed class VulkanFrameContext : IDisposable
     private DescriptorSet[] _descriptorSets;
     private CommandBuffer[] _commandBuffers;
     private Fence[] _imagesInFlight;
-    private bool _disposed = false;
+    private bool _isDisposed = false;
 
     public VulkanFrameContext(Vk vk, VulkanDevices devices, VulkanSwapChain swapChain, VulkanPipeline pipeline, uint queueFamilyGraphicsIndex)
     {
@@ -487,7 +487,7 @@ internal unsafe sealed class VulkanFrameContext : IDisposable
 
     internal void Dispose(bool disposing)
     {
-        if (!_disposed)
+        if (!_isDisposed)
         {
             if (disposing)
             {
@@ -525,7 +525,7 @@ internal unsafe sealed class VulkanFrameContext : IDisposable
                 }
             }
 
-            _disposed = true;
+            _isDisposed = true;
         }
     }
 }

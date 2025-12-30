@@ -32,7 +32,7 @@ internal unsafe sealed class VulkanSwapChain : IDisposable
     private readonly VulkanSurface _surface;
     private readonly VulkanDevices _devices;
     private readonly SurfaceFormatKHR _surfaceFormat;
-    private bool _disposed = false;
+    private bool _isDisposed = false;
 
     public VulkanSwapChain(Vk vk, Instance instance, VulkanSurface surface, VulkanDevices devices, Vector2D<int> framebufferSize)
     {
@@ -221,7 +221,7 @@ internal unsafe sealed class VulkanSwapChain : IDisposable
 
     internal void Dispose(bool disposing)
     {
-        if (!_disposed)
+        if (!_isDisposed)
         {
             if (disposing)
             {
@@ -233,7 +233,7 @@ internal unsafe sealed class VulkanSwapChain : IDisposable
                 KhrSwapChain.DestroySwapchain(_devices.LogicalDevice, SwapChain, null);
             }
 
-            _disposed = true;
+            _isDisposed = true;
         }
     }
 }

@@ -21,7 +21,7 @@ internal unsafe sealed class VulkanPresenter : IDisposable
     private readonly VulkanFrameContext _frameContext;
     private int _currentFrame = 0;
     private bool _frameBufferResized = false;
-    private bool _disposed = false;
+    private bool _isDisposed = false;
 
     public VulkanPresenter(VulkanVirtualScreen virtualScreen)
     {
@@ -119,7 +119,7 @@ internal unsafe sealed class VulkanPresenter : IDisposable
 
     internal void Dispose(bool disposing)
     {
-        if (!_disposed)
+        if (!_isDisposed)
         {
             if (disposing)
             {
@@ -132,7 +132,7 @@ internal unsafe sealed class VulkanPresenter : IDisposable
                 Devices.Dispose();
             }
 
-            _disposed = true;
+            _isDisposed = true;
         }
     }
 }

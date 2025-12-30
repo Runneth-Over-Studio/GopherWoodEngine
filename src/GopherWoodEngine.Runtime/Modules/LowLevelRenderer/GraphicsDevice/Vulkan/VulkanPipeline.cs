@@ -26,7 +26,7 @@ internal unsafe sealed class VulkanPipeline : IDisposable
     private readonly Vk _vk;
     private readonly Device _logicalDevice;
     private readonly VulkanSwapChain _swapChain;
-    private bool _disposed = false;
+    private bool _isDisposed = false;
 
     public VulkanPipeline(Vk vk, Device logicalDevice, VulkanSwapChain swapChain, DescriptorSetLayout descriptorSetLayout)
     {
@@ -347,7 +347,7 @@ internal unsafe sealed class VulkanPipeline : IDisposable
 
     internal void Dispose(bool disposing)
     {
-        if (!_disposed)
+        if (!_isDisposed)
         {
             if (disposing)
             {
@@ -357,7 +357,7 @@ internal unsafe sealed class VulkanPipeline : IDisposable
                 _vk.DestroyRenderPass(_logicalDevice, RenderPass, null);
             }
 
-            _disposed = true;
+            _isDisposed = true;
         }
     }
 }

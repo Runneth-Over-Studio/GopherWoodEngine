@@ -13,7 +13,7 @@ internal unsafe sealed class VulkanTexture : IDisposable
     private DeviceMemory _textureImageMemory;
     private ImageView _textureImageView;
     private Sampler _textureSampler;
-    private bool _disposed = false;
+    private bool _isDisposed = false;
 
     public VulkanTexture(Vk vk, VulkanDevices devices, CommandPool commandPool)
     {
@@ -194,7 +194,7 @@ internal unsafe sealed class VulkanTexture : IDisposable
 
     internal void Dispose(bool disposing)
     {
-        if (!_disposed)
+        if (!_isDisposed)
         {
             if (disposing)
             {
@@ -205,7 +205,7 @@ internal unsafe sealed class VulkanTexture : IDisposable
                 _vk.FreeMemory(_logicalDevice, _textureImageMemory, null);
             }
 
-            _disposed = true;
+            _isDisposed = true;
         }
     }
 }

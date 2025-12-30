@@ -12,7 +12,7 @@ internal unsafe sealed class VulkanGraphicsDevice : IGraphicsDevice
     private readonly VulkanVirtualScreen _virtualScreen;
     private readonly VulkanDebugger? _debugger;
     private readonly VulkanPresenter _presenter;
-    private bool _disposed = false;
+    private bool _isDisposed = false;
     
 
     public VulkanGraphicsDevice(ILogger<IGraphicsDevice> logger, ILogger<VulkanDebugger> vkLogger, IVirtualScreen virtualScreen, IEventSystem eventSystem)
@@ -73,7 +73,7 @@ internal unsafe sealed class VulkanGraphicsDevice : IGraphicsDevice
 
     internal void Dispose(bool disposing)
     {
-        if (!_disposed)
+        if (!_isDisposed)
         {
             if (disposing)
             {
@@ -84,7 +84,7 @@ internal unsafe sealed class VulkanGraphicsDevice : IGraphicsDevice
                 _virtualScreen.Dispose();
             }
 
-            _disposed = true;
+            _isDisposed = true;
         }
     }
 }

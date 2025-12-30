@@ -11,11 +11,11 @@ internal sealed class EventSystem(ILogger<IEventSystem> logger) : IEventSystem
 {
     private readonly ConcurrentDictionary<Type, ImmutableList<Delegate>> _handlers = new();
     private readonly ILogger<IEventSystem> _logger = logger;
-    private bool _disposed = false;
+    private bool _isDisposed = false;
 
     public void Publish<T>(object? sender, T eventData) where T : EventArgs
     {
-        if (!_disposed)
+        if (!_isDisposed)
         {
             Type key = typeof(EventHandler<T>);
 
@@ -43,7 +43,7 @@ internal sealed class EventSystem(ILogger<IEventSystem> logger) : IEventSystem
 
     public void Subscribe<T>(EventHandler<T> handler) where T : EventArgs
     {
-        if (!_disposed)
+        if (!_isDisposed)
         {
             Type key = typeof(EventHandler<T>);
             _handlers.AddOrUpdate(key, [handler], (k, list) => list.Contains(handler) ? list : list.Add(handler));
@@ -56,7 +56,7 @@ internal sealed class EventSystem(ILogger<IEventSystem> logger) : IEventSystem
 
     public void Unsubscribe<T>(EventHandler<T> handler) where T : EventArgs
     {
-        if (!_disposed)
+        if (!_isDisposed)
         {
             Type key = typeof(EventHandler<T>);
             _handlers.AddOrUpdate(key, [], (k, list) => list.Remove(handler));
@@ -75,14 +75,14 @@ internal sealed class EventSystem(ILogger<IEventSystem> logger) : IEventSystem
 
     internal void Dispose(bool disposing)
     {
-        if (!_disposed)
+        if (!_isDisposed)
         {
             if (disposing)
             {
                 _handlers.Clear();
             }
 
-            _disposed = true;
+            _isDisposed = true;
         }
     }
 }

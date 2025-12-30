@@ -32,7 +32,7 @@ internal unsafe sealed class VulkanDevices : IDisposable
     internal Queue PresentQueue { get; }
 
     private readonly Vk _vk;
-    private bool _disposed = false;
+    private bool _isDisposed = false;
 
     public VulkanDevices(VulkanVirtualScreen virtualScreen)
     {
@@ -270,14 +270,14 @@ internal unsafe sealed class VulkanDevices : IDisposable
 
     internal void Dispose(bool disposing)
     {
-        if (!_disposed)
+        if (!_isDisposed)
         {
             if (disposing)
             {
                 _vk.DestroyDevice(LogicalDevice, null);
             }
 
-            _disposed = true;
+            _isDisposed = true;
         }
     }
 }

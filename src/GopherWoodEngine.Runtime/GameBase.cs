@@ -23,7 +23,7 @@ public abstract class GameBase : IDisposable
     /// </summary>
     public Engine Engine { get; private set; }
 
-    private bool _disposed = false;
+    private bool _isDisposed = false;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GameBase"/> class with the specified engine configuration.
@@ -82,14 +82,14 @@ public abstract class GameBase : IDisposable
     /// </summary>
     protected virtual void Dispose(bool disposing)
     {
-        if (!_disposed)
+        if (!_isDisposed)
         {
             if (disposing)
             {
                 Engine.Dispose();
             }
 
-            _disposed = true;
+            _isDisposed = true;
         }
     }
 }
