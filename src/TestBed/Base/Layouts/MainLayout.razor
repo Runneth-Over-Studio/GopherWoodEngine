@@ -1,0 +1,19 @@
+@using TestBed.Base.Components
+@using RazorConsole.Components
+@using Spectre.Console
+@inherits LayoutComponentBase
+
+<Header/>
+<NavBar @bind-IsFocused="NavBarIsFocused" />
+<Panel Expand="true" BorderColor="Color.Grey">
+    <Grid Expand="true">
+        <Padder Padding="@(new(1, 1, 1, 1))">
+            @Body
+        </Padder>
+    </Grid>
+</Panel>
+<Footer NavBarIsFocused="NavBarIsFocused" />
+
+@code {
+    private bool NavBarIsFocused;
+}

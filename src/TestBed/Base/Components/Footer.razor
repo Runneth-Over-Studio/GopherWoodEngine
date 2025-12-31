@@ -1,0 +1,17 @@
+﻿@using RazorConsole.Components
+@using Spectre.Console
+
+<Align Horizontal="@HorizontalAlignment.Center">
+    <Rows>
+        <Markup Content="@InstructionContent" Foreground="@Color.Grey58" />
+    </Rows>
+</Align>
+
+@code {
+    [Parameter]
+    public bool NavBarIsFocused { get; set; }
+
+    private string InstructionContent => NavBarIsFocused
+        ? "Use ↑/↓ to navigate Tabs • Tab / Ctrl+Tab to change focus • Enter to select • Type to input • Control+C to exit"
+        : "Tab / Ctrl+Tab to change focus • Enter to select • Type to input • Control+C to exit";
+}

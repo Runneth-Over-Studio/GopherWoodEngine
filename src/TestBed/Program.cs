@@ -1,38 +1,33 @@
-﻿using GopherWoodEngine.Runtime;
-using Spectre.Console;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using RazorConsole.Core;
 using System;
-using System.IO;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace TestBed;
 
-internal class Program
+public class Program
 {
-    private static void Main()
+    public static async Task Main(string[] args)
     {
         int exitCode = 0;
-        AnsiConsole.Clear();
 
         try
         {
-            AnsiConsole.Write(CreateTitleFiglet("Gopher Wood Engine Test Bed", "ansi-shadow.flf", new Color(130, 111, 102)));
+            HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+            builder.UseRazorConsole<App>();
 
-            EngineConfig engineConfig = new()
-            {
-                Title = "Gopher Wood Engine Test Bed",
-                Width = 1280,
-                Height = 720
-            };
+            RegisterServices(builder.Services);
 
-            using TestBedGame game = new(engineConfig);
-            game.Start();
+            IHost host = builder.Build();
+            await host.RunAsync();
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine("[red]An unexpected error occurred.[/]");
-            AnsiConsole.WriteLine(ex.Message);
-            AnsiConsole.WriteLine(ex.StackTrace ?? string.Empty);
+            Console.Error.WriteLine($"Application terminated unexpectedly: {ex}");
             exitCode = 1;
         }
         finally
@@ -41,33 +36,16 @@ internal class Program
         }
     }
 
-    private static FigletText CreateTitleFiglet(string appTitle, string? fontName = null, Color? color = null)
+    private static void RegisterServices(IServiceCollection services)
     {
-        FigletFont figFont = FigletFont.Default;
+        // Auto-register all ViewModels by convention
+        IEnumerable<Type> viewModelTypes = Assembly.GetExecutingAssembly()
+            .GetTypes()
+            .Where(t => t.IsClass && !t.IsAbstract && t.Name.EndsWith("ViewModel"));
 
-        if (!string.IsNullOrEmpty(fontName))
+        foreach (Type viewModelType in viewModelTypes)
         {
-            string? font = ReadAssemblyResource(Assembly.GetExecutingAssembly(), fontName);
-            if (font != null)
-            {
-                figFont = FigletFont.Parse(font);
-            }
+            services.AddScoped(viewModelType);
         }
-
-        return new FigletText(figFont, appTitle).Color(color ?? Color.Default);
-    }
-
-    private static string? ReadAssemblyResource(Assembly assembly, string name)
-    {
-        string resourcePath = assembly.GetManifestResourceNames().Single(str => str.EndsWith($".{name}"));
-
-        using Stream? stream = assembly.GetManifestResourceStream(resourcePath);
-        if (stream != null)
-        {
-            using StreamReader reader = new(stream);
-            return reader.ReadToEnd();
-        }
-
-        return null;
     }
 }

@@ -1,0 +1,61 @@
+@using RazorConsole.Components
+@using Spectre.Console
+@inject NavigationManager Nav
+
+<Panel Title="Navigation" BorderColor="Color.Grey">
+    <Columns>
+        @foreach ((string Key, string Label) tab in _tabs)
+        {
+            <TextButton Content="@tab.Label"
+                        OnClick="@(() => NavigateTo(tab.Key))"
+                        BackgroundColor="@(IsActive(tab.Key) ? Color.Blue : Color.Grey)"
+                        FocusedColor="Color.Aqua" />
+        }
+    </Columns>
+</Panel>
+
+@code {
+    private string SelectedTabKey = "home";
+
+    private readonly (string Key, string Label)[] _tabs = new[]
+    {
+        ("home", "Home"),
+        ("vulkan", "Vulkan")
+    };
+
+    private bool IsActive(string tabKey) => string.Equals(tabKey, SelectedTabKey, StringComparison.OrdinalIgnoreCase);
+
+    private void NavigateTo(string tabKey)
+    {
+        if (tabKey == null)
+        {
+            throw new InvalidOperationException($"Tab '{tabKey}' not found.");
+        }
+
+        SelectedTabKey = tabKey;
+        Nav.NavigateTo(tabKey);
+    }
+
+    [Parameter]
+    public bool IsFocused { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsFocusedChanged { get; set; }
+
+    private async Task OnSelectFocusChanged(bool isFocused)
+    {
+        if (IsFocused == isFocused)
+        {
+            return;
+        }
+
+        IsFocused = isFocused;
+
+        if (IsFocusedChanged.HasDelegate)
+        {
+            await IsFocusedChanged.InvokeAsync(isFocused).ConfigureAwait(false);
+        }
+
+        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+    }
+}

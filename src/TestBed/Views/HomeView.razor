@@ -1,0 +1,14 @@
+@using RazorConsole.Components
+@using Spectre.Console
+@using TestBed.Base
+@using TestBed.ViewModels
+@inherits RazorConsoleView<HomeViewModel>
+
+@page "/"
+@page "/home"
+
+<Rows>
+    <Markup Content="Welcome! Navigate tabs for different tests." Foreground="Color.Chartreuse1" Decoration="@Decoration.Bold" />
+    <Newline />
+
+</Rows>

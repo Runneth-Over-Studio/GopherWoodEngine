@@ -1,0 +1,61 @@
+@using RazorConsole.Components
+@using Spectre.Console
+@using TestBed.Base
+@using TestBed.ViewModels
+@inherits RazorConsoleView<VulkanTestsViewModel>
+
+@page "/vulkan"
+
+<Rows>
+    <Select Options="@(ViewModel.Tests)"
+            Value="@ViewModel.SelectedTest"
+            ValueChanged="@OnSelectedChanged"
+            IsFocused="@IsSelectFocused"
+            IsFocusedChanged="@OnSelectFocusChanged"
+            Expand="false" />
+    
+    <Newline />
+    
+    <TextButton Content="Launch Engine"
+                OnClick="@OnLaunchEngine"
+                BackgroundColor="@Color.Grey"
+                FocusedColor="@Color.Blue"/>
+</Rows>
+
+@code {
+    [Parameter]
+    public bool IsSelectFocused { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsSelectFocusedChanged { get; set; }
+
+    private async Task OnSelectFocusChanged(bool isFocused)
+    {
+        if (IsSelectFocused == isFocused)
+        {
+            return;
+        }
+
+        IsSelectFocused = isFocused;
+
+        if (IsSelectFocusedChanged.HasDelegate)
+        {
+            await IsSelectFocusedChanged.InvokeAsync(isFocused).ConfigureAwait(false);
+        }
+
+        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+    }
+
+    private void OnSelectedChanged(string selectedValue)
+    {
+        ViewModel.SelectedTest = selectedValue;
+    }
+
+    private async Task OnLaunchEngine()
+    {
+        AnsiConsole.Clear();
+        AnsiConsole.Write(Base.Components.Header.CreateHeaderPanel());
+
+        await ViewModel.StartEngineCommand.ExecuteAsync(null);
+    }
+}

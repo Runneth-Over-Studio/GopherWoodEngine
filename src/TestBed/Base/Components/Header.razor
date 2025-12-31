@@ -1,0 +1,31 @@
+@using RazorConsole.Components
+@using Spectre.Console
+
+<Panel BorderColor="@_headerColor" Border="@_boxBorder">
+    <Markup Content="@Title" Foreground="@_headerColor" Decoration="@_titleDecoration" />
+</Panel>
+
+@code {
+    private const string APP_NAME = "Gopher Wood Engine Test Bed";
+    private static readonly Color _headerColor = new Color(130, 111, 102);
+    private static readonly Decoration _titleDecoration = Decoration.Bold;
+    private static readonly BoxBorder _boxBorder = BoxBorder.Square;
+
+    [Parameter]
+    public string Title { get; set; } = APP_NAME;
+
+    /// <summary>
+    /// Creates a Spectre.Console Panel for use in non-Razor contexts (e.g., AnsiConsole.Write).
+    /// For Razor views, use the Header component directly: &lt;Header /&gt;
+    /// </summary>
+    public static Spectre.Console.Panel CreateHeaderPanel(string? title = null)
+    {
+        Spectre.Console.Text styledTitle = new(title ?? APP_NAME, new Style(foreground: _headerColor, decoration: _titleDecoration));
+        
+        return new Spectre.Console.Panel(styledTitle)
+        {
+            Border = _boxBorder,
+            BorderStyle = new Style(_headerColor)
+        };
+    }
+}
