@@ -13,7 +13,7 @@ internal unsafe sealed class VulkanGraphicsDevice : IGraphicsDevice
     private readonly VulkanDebugger? _debugger;
     private readonly VulkanPresenter _presenter;
     private bool _isDisposed = false;
-    
+
 
     public VulkanGraphicsDevice(ILogger<IGraphicsDevice> logger, ILogger<VulkanDebugger> vkLogger, IVirtualScreen virtualScreen, IEventSystem eventSystem)
     {
