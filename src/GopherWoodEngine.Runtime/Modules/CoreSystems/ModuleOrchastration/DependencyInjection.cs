@@ -8,9 +8,7 @@ internal static class DependencyInjection
     {
         // Core Systems
         services.AddEngineLogging();
-        services.AddKeyedSingleton<IRandomNumberGenerator, RandomNumberGenerator>("ThreadSafe", (sp, key) => new RandomNumberGenerator(seed: null));
-        services.AddKeyedSingleton<IRandomNumberGenerator, RandomNumberGenerator>("Deterministic", (sp, key) => new RandomNumberGenerator(seed: engineConfig.RandomSeed ?? 0));
-        services.AddSingleton(sp => sp.GetRequiredKeyedService<IRandomNumberGenerator>("ThreadSafe")); // Register default (non-keyed), resolves to ThreadSafe by default.
+        services.AddSingleton<IRandomNumberGenerator>(new RandomNumberGenerator(seed: engineConfig.RandomSeed));
 
         // Gameplay Foundations
         services.AddSingleton<IEventSystem, EventSystem>();
