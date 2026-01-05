@@ -30,6 +30,13 @@ Gopher Wood Engine uses [Semantic Versioning](https://semver.org/).
 
 During initial development the version will be at 0.1.0. Once a usable API is released, the version will remain 0.y.z during rapid development. When the engine is ready for production use (building a real game), version 1.0.0 will be released.
 
+<!-- 
+## Third-Party APIs
+- [Vulkan Graphics](https://www.vulkan.org/) via [Silk.NET](https://github.com/dotnet/Silk.NET) bindings.
+- [OpenAL](https://www.openal.org/) via [Silk.NET](https://github.com/dotnet/Silk.NET) bindings.
+- [Jolt Physics](https://jrouwe.github.io/JoltPhysics/) via [JoltPhysicsSharp](https://github.com/amerkoleci/JoltPhysicsSharp) bindings.
+ -->
+ 
 ## Build Requirements
 - All projects target the LTS version of the [.NET SDK](https://dotnet.microsoft.com/en-us/download), which also provides the `dotnet` command-line tool used in the build process.
 - The engine renderer requires the [Vulkan SDK](https://www.lunarg.com/vulkan-sdk/), which provides validation layers and command-line tools for shader compilation. 
