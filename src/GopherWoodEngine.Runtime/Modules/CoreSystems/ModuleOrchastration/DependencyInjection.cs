@@ -20,6 +20,9 @@ internal static class DependencyInjection
         // Human Interface Device
         services.AddSingleton<IPhysicalDeviceIO, PhysicalDeviceIO>();
 
+        // Audio
+        services.AddTransient<IWavePlayer, OpenALWavePlayer>();
+
         return services;
     }
 }
