@@ -20,7 +20,8 @@
     private readonly (string Key, string Label)[] _tabs = new[]
     {
         ("home", "Home"),
-        ("vulkan", "Vulkan")
+        ("vulkan", "Vulkan"),
+        ("openal", "OpenAL")
     };
 
     private bool IsActive(string tabKey) => string.Equals(tabKey, SelectedTabKey, StringComparison.OrdinalIgnoreCase);

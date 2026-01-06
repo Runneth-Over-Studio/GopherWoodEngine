@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Base\Assets\Sounds\" />
     <Folder Include="Base\Layouts\" />
   </ItemGroup>
 

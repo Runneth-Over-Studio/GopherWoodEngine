@@ -1,0 +1,5 @@
+Sound effect "sfx_sounds_interaction23" by SubspaceAudio
+from https://opengameart.org/content/512-sound-effects-8-bit-style
+
+Music "The_Last_Encounter" by Matthew Pablo
+from https://opengameart.org/content/rpg-battle-theme-the-last-encounter-0
