@@ -21,7 +21,7 @@ internal static class DependencyInjection
         services.AddSingleton<IPhysicalDeviceIO, PhysicalDeviceIO>();
 
         // Audio
-        services.AddTransient<IWavePlayer, OpenALWavePlayer>();
+        services.AddSingleton<IWavePlayer, OpenALWavePlayer>();
 
         return services;
     }

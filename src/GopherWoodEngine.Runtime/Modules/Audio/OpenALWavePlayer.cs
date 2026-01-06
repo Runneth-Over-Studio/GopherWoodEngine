@@ -3,6 +3,7 @@ using Silk.NET.OpenAL;
 using System;
 using System.Buffers.Binary;
 using System.IO;
+using System.Numerics;
 using System.Text;
 
 namespace GopherWoodEngine.Runtime.Modules;
@@ -13,51 +14,253 @@ namespace GopherWoodEngine.Runtime.Modules;
 /// <remarks>
 /// This class parses RIFF-WAVE formatted files and plays them using the OpenAL audio library.
 /// Supports PCM encoded audio with mono or stereo channels at 8 or 16 bits per sample.
+/// Designed to be used as a sub-module within a higher-level audio manager.
 /// </remarks>
 public sealed class OpenALWavePlayer : IWavePlayer
 {
     private readonly ILogger<IWavePlayer> _logger;
+    private readonly AL _al;
+    private readonly ALContext _alc;
+    private unsafe Device* _device;
+    private unsafe Context* _context;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="OpenALWavePlayer"/> class.
     /// </summary>
     /// <param name="logger">The logger instance for diagnostic output.</param>
-    public OpenALWavePlayer(ILogger<IWavePlayer> logger)
+    public unsafe OpenALWavePlayer(ILogger<IWavePlayer> logger)
     {
         _logger = logger;
+        _alc = ALContext.GetApi();
+        _al = AL.GetApi();
+
+        _device = _alc.OpenDevice("");
+        if (_device == null)
+        {
+            throw new InvalidOperationException("Could not create OpenAL device");
+        }
+
+        _context = _alc.CreateContext(_device, null);
+        if (_context == null)
+        {
+            _alc.CloseDevice(_device);
+            throw new InvalidOperationException("Could not create OpenAL context");
+        }
+
+        _alc.MakeContextCurrent(_context);
+        _al.GetError(); // Clear any existing errors
     }
 
     /// <inheritdoc/>
+    /// <param name="waveFilePath">The path to the WAVE file to play.</param>
+    /// <param name="volume">The playback volume (0.0 to 1.0). Default is 1.0.</param>
+    /// <param name="looping">Whether the audio should loop continuously. Default is false.</param>
+    /// <remarks>
+    /// This method is suitable for UI sounds, background music, and 2D games.
+    /// Audio is played without spatial/positional effects.
+    /// </remarks>
+    public unsafe void PlayWave2D(string waveFilePath, float volume = 1.0f, bool looping = false)
+    {
+        var audioData = LoadWaveFile(waveFilePath);
+        if (audioData == null)
+            return;
+
+        uint source = _al.GenSource();
+        uint buffer = _al.GenBuffer();
+
+        var error = _al.GetError();
+        if (error != AudioError.NoError)
+        {
+            _logger.LogError("Failed to create OpenAL source/buffer: {Error}", error);
+            return;
+        }
+
+        try
+        {
+            // Buffer the audio data
+            fixed (byte* pData = audioData.Value.Data)
+            {
+                _al.BufferData(buffer, audioData.Value.Format, pData, audioData.Value.Data.Length, audioData.Value.SampleRate);
+            }
+
+            error = _al.GetError();
+            if (error != AudioError.NoError)
+            {
+                _logger.LogError("Failed to buffer audio data: {Error}", error);
+                return;
+            }
+
+            // Configure source for 2D playback
+            _al.SetSourceProperty(source, SourceInteger.Buffer, buffer);
+            _al.SetSourceProperty(source, SourceBoolean.Looping, looping);
+            _al.SetSourceProperty(source, SourceFloat.Gain, Math.Clamp(volume, 0.0f, 1.0f));
+            _al.SetSourceProperty(source, SourceBoolean.SourceRelative, true); // Make it non-positional
+
+            // Play the audio
+            _al.SourcePlay(source);
+            error = _al.GetError();
+            if (error != AudioError.NoError)
+            {
+                _logger.LogError("Failed to play audio source: {Error}", error);
+                return;
+            }
+
+            _logger.LogInformation("Playing 2D audio: {FilePath} (Volume: {Volume}, Looping: {Looping})",
+                waveFilePath, volume, looping);
+
+            // Wait for playback to complete (only if not looping)
+            if (!looping)
+            {
+                WaitForPlaybackCompletion(source);
+            }
+        }
+        finally
+        {
+            // Cleanup
+            _al.SourceStop(source);
+            _al.DeleteSource(source);
+            _al.DeleteBuffer(buffer);
+        }
+
+        _logger.LogDebug("2D audio playback completed and resources cleaned up");
+    }
+
+    /// <inheritdoc/>
+    /// <param name="waveFilePath">The path to the WAVE file to play.</param>
+    /// <param name="position">The 3D position of the sound source in world space.</param>
+    /// <param name="velocity">The velocity vector of the sound source for Doppler effect. Default is zero.</param>
+    /// <param name="volume">The playback volume (0.0 to 1.0). Default is 1.0.</param>
+    /// <param name="looping">Whether the audio should loop continuously. Default is false.</param>
+    /// <param name="referenceDistance">The distance at which the volume is at maximum. Default is 1.0.</param>
+    /// <param name="maxDistance">The maximum distance beyond which the sound is no longer attenuated. Default is 100.0.</param>
+    /// <param name="rolloffFactor">The rate at which sound attenuates with distance. Default is 1.0.</param>
     /// <remarks>
     /// <para>
-    /// This method reads and parses a RIFF-WAVE format audio file, validates its format,
-    /// and plays it using OpenAL. The method supports:
-    /// </para>
-    /// <list type="bullet">
-    /// <item><description>Mono and stereo audio (1-2 channels)</description></item>
-    /// <item><description>8-bit and 16-bit sample depths</description></item>
-    /// <item><description>PCM audio format (format code 1)</description></item>
-    /// </list>
-    /// <para>
-    /// The method handles various WAVE file chunks including 'fmt ', 'data', 'JUNK', and 'iXML'.
+    /// This method provides spatial 3D audio suitable for games with positional sound effects.
+    /// The audio will be attenuated based on distance from the listener and panned based on direction.
     /// </para>
     /// <para>
-    /// The audio plays to completion before returning. OpenAL resources (source, buffer,
-    /// context, and device) are properly cleaned up after playback.
+    /// Note: For stereo audio files, spatial effects are limited. Use mono audio for best 3D positioning.
     /// </para>
     /// </remarks>
-    public unsafe void PlayWave(string waveFilePath)
+    public unsafe void PlayWave3D(string waveFilePath, Vector3 position, Vector3 velocity = default, float volume = 1.0f, bool looping = false, float referenceDistance = 1.0f, float maxDistance = 100.0f, float rolloffFactor = 1.0f)
+    {
+        var audioData = LoadWaveFile(waveFilePath);
+        if (audioData == null)
+            return;
+
+        // Warn if using stereo for 3D audio
+        if (audioData.Value.Format == BufferFormat.Stereo8 || audioData.Value.Format == BufferFormat.Stereo16)
+        {
+            _logger.LogWarning("Using stereo audio for 3D spatial sound. Mono audio is recommended for better positioning.");
+        }
+
+        uint source = _al.GenSource();
+        uint buffer = _al.GenBuffer();
+
+        var error = _al.GetError();
+        if (error != AudioError.NoError)
+        {
+            _logger.LogError("Failed to create OpenAL source/buffer: {Error}", error);
+            return;
+        }
+
+        try
+        {
+            // Buffer the audio data
+            fixed (byte* pData = audioData.Value.Data)
+            {
+                _al.BufferData(buffer, audioData.Value.Format, pData, audioData.Value.Data.Length, audioData.Value.SampleRate);
+            }
+
+            error = _al.GetError();
+            if (error != AudioError.NoError)
+            {
+                _logger.LogError("Failed to buffer audio data: {Error}", error);
+                return;
+            }
+
+            // Configure source for 3D spatial playback
+            _al.SetSourceProperty(source, SourceInteger.Buffer, buffer);
+            _al.SetSourceProperty(source, SourceBoolean.Looping, looping);
+            _al.SetSourceProperty(source, SourceFloat.Gain, Math.Clamp(volume, 0.0f, 1.0f));
+            _al.SetSourceProperty(source, SourceBoolean.SourceRelative, false); // Enable spatial positioning
+
+            // Set 3D position and velocity
+            _al.SetSourceProperty(source, SourceVector3.Position, position.X, position.Y, position.Z);
+            _al.SetSourceProperty(source, SourceVector3.Velocity, velocity.X, velocity.Y, velocity.Z);
+
+            // Set distance attenuation parameters
+            _al.SetSourceProperty(source, SourceFloat.ReferenceDistance, referenceDistance);
+            _al.SetSourceProperty(source, SourceFloat.MaxDistance, maxDistance);
+            _al.SetSourceProperty(source, SourceFloat.RolloffFactor, rolloffFactor);
+
+            // Play the audio
+            _al.SourcePlay(source);
+            error = _al.GetError();
+            if (error != AudioError.NoError)
+            {
+                _logger.LogError("Failed to play audio source: {Error}", error);
+                return;
+            }
+
+            _logger.LogInformation(
+                "Playing 3D audio: {FilePath} at position {Position} (Volume: {Volume}, Looping: {Looping})",
+                waveFilePath, position, volume, looping);
+
+            // Wait for playback to complete (only if not looping)
+            if (!looping)
+            {
+                WaitForPlaybackCompletion(source);
+            }
+        }
+        finally
+        {
+            // Cleanup
+            _al.SourceStop(source);
+            _al.DeleteSource(source);
+            _al.DeleteBuffer(buffer);
+        }
+
+        _logger.LogDebug("3D audio playback completed and resources cleaned up");
+    }
+
+    /// <inheritdoc/>
+    /// <param name="position">The position of the listener (typically the camera/player position).</param>
+    /// <param name="forward">The forward direction vector of the listener.</param>
+    /// <param name="up">The up direction vector of the listener.</param>
+    /// <param name="velocity">The velocity of the listener for Doppler effect. Default is zero.</param>
+    /// <remarks>
+    /// This should be called each frame to update the listener's position based on the camera or player movement.
+    /// </remarks>
+    public unsafe void SetListenerPosition(Vector3 position, Vector3 forward, Vector3 up, Vector3 velocity = default)
+    {
+        _al.SetListenerProperty(ListenerVector3.Position, position.X, position.Y, position.Z);
+        _al.SetListenerProperty(ListenerVector3.Velocity, velocity.X, velocity.Y, velocity.Z);
+
+        // OpenAL requires orientation as a 6-float array: [forward.x, forward.y, forward.z, up.x, up.y, up.z]
+        float[] orientation = [forward.X, forward.Y, forward.Z, up.X, up.Y, up.Z];
+        fixed (float* pOrientation = orientation)
+        {
+            _al.SetListenerProperty(ListenerFloatArray.Orientation, pOrientation);
+        }
+
+        _logger.LogTrace("Listener position updated: Position={Position}, Forward={Forward}, Up={Up}",
+            position, forward, up);
+    }
+
+    private WaveAudioData? LoadWaveFile(string waveFilePath)
     {
         if (string.IsNullOrWhiteSpace(waveFilePath))
         {
             _logger.LogError("Wave file path is null or empty.");
-            return;
+            return null;
         }
 
         if (!File.Exists(waveFilePath))
         {
             _logger.LogError("Wave file doesn't exist at path: {FilePath}", waveFilePath);
-            return;
+            return null;
         }
 
         ReadOnlySpan<byte> file = File.ReadAllBytes(waveFilePath);
@@ -68,7 +271,7 @@ public sealed class OpenALWavePlayer : IWavePlayer
             file[index++] != 'R' || file[index++] != 'I' || file[index++] != 'F' || file[index++] != 'F')
         {
             _logger.LogError("Given file is not in RIFF format: {FilePath}", waveFilePath);
-            return;
+            return null;
         }
 
         int chunkSize = BinaryPrimitives.ReadInt32LittleEndian(file.Slice(index, 4));
@@ -78,58 +281,15 @@ public sealed class OpenALWavePlayer : IWavePlayer
         if (file[index++] != 'W' || file[index++] != 'A' || file[index++] != 'V' || file[index++] != 'E')
         {
             _logger.LogError("Given file is not in WAVE format: {FilePath}", waveFilePath);
-            return;
+            return null;
         }
 
         short numChannels = -1;
         int sampleRate = -1;
-        int byteRate = -1;
-        short blockAlign = -1;
         short bitsPerSample = -1;
         BufferFormat format = 0;
         bool formatParsed = false;
-
-        ALContext alc = ALContext.GetApi();
-        AL al = AL.GetApi();
-        Device* device = alc.OpenDevice("");
-        if (device == null)
-        {
-            _logger.LogError("Could not create OpenAL device");
-            return;
-        }
-
-        Context* context = alc.CreateContext(device, null);
-        if (context == null)
-        {
-            _logger.LogError("Could not create OpenAL context");
-            alc.CloseDevice(device);
-            alc.Dispose();
-            return;
-        }
-
-        alc.MakeContextCurrent(context);
-
-        // Clear any existing errors
-        al.GetError();
-
-        uint source = al.GenSource();
-        uint buffer = al.GenBuffer();
-
-        // Check for errors after resource creation
-        var error = al.GetError();
-        if (error != AudioError.NoError)
-        {
-            _logger.LogError("Failed to create OpenAL source/buffer: {Error}", error);
-            alc.MakeContextCurrent(null);
-            alc.DestroyContext(context);
-            alc.CloseDevice(device);
-            al.Dispose();
-            alc.Dispose();
-            return;
-        }
-
-        // Note: Looping is currently hardcoded - consider making this configurable
-        al.SetSourceProperty(source, SourceBoolean.Looping, false);
+        byte[]? audioData = null;
 
         // Parse WAVE chunks
         while (index + 8 <= file.Length)
@@ -158,7 +318,7 @@ public sealed class OpenALWavePlayer : IWavePlayer
                 if (audioFormat != 1)
                 {
                     _logger.LogError("Unsupported audio format: {AudioFormat}. Only PCM (1) is supported.", audioFormat);
-                    index += size - 2; // Skip rest of chunk
+                    index += size - 2;
                     continue;
                 }
 
@@ -166,14 +326,14 @@ public sealed class OpenALWavePlayer : IWavePlayer
                 index += 2;
                 sampleRate = BinaryPrimitives.ReadInt32LittleEndian(file.Slice(index, 4));
                 index += 4;
-                byteRate = BinaryPrimitives.ReadInt32LittleEndian(file.Slice(index, 4));
+                int byteRate = BinaryPrimitives.ReadInt32LittleEndian(file.Slice(index, 4));
                 index += 4;
-                blockAlign = BinaryPrimitives.ReadInt16LittleEndian(file.Slice(index, 2));
+                short blockAlign = BinaryPrimitives.ReadInt16LittleEndian(file.Slice(index, 2));
                 index += 2;
                 bitsPerSample = BinaryPrimitives.ReadInt16LittleEndian(file.Slice(index, 2));
                 index += 2;
 
-                // Skip any extra format bytes (for non-PCM formats, size > 16)
+                // Skip any extra format bytes
                 if (size > 16)
                 {
                     index += size - 16;
@@ -189,7 +349,7 @@ public sealed class OpenALWavePlayer : IWavePlayer
                     else
                     {
                         _logger.LogError("Unsupported mono bit depth: {BitsPerSample}. Only 8 or 16 bits supported.", bitsPerSample);
-                        break;
+                        return null;
                     }
                 }
                 else if (numChannels == 2)
@@ -201,13 +361,13 @@ public sealed class OpenALWavePlayer : IWavePlayer
                     else
                     {
                         _logger.LogError("Unsupported stereo bit depth: {BitsPerSample}. Only 8 or 16 bits supported.", bitsPerSample);
-                        break;
+                        return null;
                     }
                 }
                 else
                 {
                     _logger.LogError("Unsupported channel count: {NumChannels}. Only mono (1) or stereo (2) supported.", numChannels);
-                    break;
+                    return null;
                 }
 
                 formatParsed = true;
@@ -217,26 +377,13 @@ public sealed class OpenALWavePlayer : IWavePlayer
                 if (!formatParsed)
                 {
                     _logger.LogError("Encountered 'data' chunk before 'fmt ' chunk. Invalid WAVE file structure.");
-                    break;
+                    return null;
                 }
 
-                var data = file.Slice(index, size);
+                audioData = file.Slice(index, size).ToArray();
                 index += size;
 
-                fixed (byte* pData = data)
-                {
-                    al.BufferData(buffer, format, pData, size, sampleRate);
-                }
-
-                error = al.GetError();
-                if (error != AudioError.NoError)
-                {
-                    _logger.LogError("Failed to buffer audio data: {Error}", error);
-                }
-                else
-                {
-                    _logger.LogInformation("Buffered {Size} bytes of audio data", size);
-                }
+                _logger.LogDebug("Loaded {Size} bytes of audio data", size);
             }
             else if (identifier == "JUNK")
             {
@@ -247,64 +394,87 @@ public sealed class OpenALWavePlayer : IWavePlayer
             {
                 var xmlData = file.Slice(index, size);
                 var str = Encoding.ASCII.GetString(xmlData);
-                _logger.LogDebug("iXML Chunk: {XmlContent}", str);
+                _logger.LogTrace("iXML Chunk: {XmlContent}", str);
                 index += size;
             }
             else
             {
-                _logger.LogDebug("Skipping unknown chunk: {Identifier} ({Size} bytes)", identifier, size);
+                _logger.LogTrace("Skipping unknown chunk: {Identifier} ({Size} bytes)", identifier, size);
                 index += size;
             }
         }
 
-        if (!formatParsed)
+        if (!formatParsed || audioData == null)
         {
-            _logger.LogError("Failed to parse WAVE file format information");
-            al.DeleteSource(source);
-            al.DeleteBuffer(buffer);
-            alc.MakeContextCurrent(null);
-            alc.DestroyContext(context);
-            alc.CloseDevice(device);
-            al.Dispose();
-            alc.Dispose();
-            return;
+            _logger.LogError("Failed to parse WAVE file: {FilePath}", waveFilePath);
+            return null;
         }
 
-        _logger.LogInformation(
-            "Successfully loaded WAVE file: {Channels} channel(s), {SampleRate} Hz, {BitsPerSample}-bit, {ByteRate} bytes/sec",
+        _logger.LogDebug(
+            "Successfully loaded WAVE file: {Channels} channel(s), {SampleRate} Hz, {BitsPerSample}-bit",
             numChannels,
             sampleRate,
-            bitsPerSample,
-            byteRate);
+            bitsPerSample);
 
-        al.SetSourceProperty(source, SourceInteger.Buffer, buffer);
-
-        al.SourcePlay(source);
-        error = al.GetError();
-        if (error != AudioError.NoError)
+        return new WaveAudioData
         {
-            _logger.LogError("Failed to play audio source: {Error}", error);
-        }
+            Data = audioData,
+            Format = format,
+            SampleRate = sampleRate,
+            NumChannels = numChannels,
+            BitsPerSample = bitsPerSample
+        };
+    }
 
-        // Wait for playback to complete (only if not looping)
-        // NOTE: This blocks the thread - consider async implementation or returning control immediately
+    private unsafe void WaitForPlaybackCompletion(uint source)
+    {
         int state;
         do
         {
-            al.GetSourceProperty(source, GetSourceInteger.SourceState, out state);
+            _al.GetSourceProperty(source, GetSourceInteger.SourceState, out state);
             System.Threading.Thread.Sleep(10); // Avoid busy waiting
         } while ((SourceState)state == SourceState.Playing);
+    }
 
-        // Cleanup
-        al.SourceStop(source);
-        al.DeleteSource(source);
-        al.DeleteBuffer(buffer);
-        alc.MakeContextCurrent(null);
-        alc.DestroyContext(context);
-        alc.CloseDevice(device);
-        al.Dispose();
-        alc.Dispose();
+    /// <summary>
+    /// Releases OpenAL resources.
+    /// </summary>
+    public unsafe void Dispose()
+    {
+        if (_context != null)
+        {
+            _alc.MakeContextCurrent(null);
+            _alc.DestroyContext(_context);
+            _context = null;
+        }
 
-        _logger.LogInformation("Audio playback completed and resources cleaned up");
+        if (_device != null)
+        {
+            _alc.CloseDevice(_device);
+            _device = null;
+        }
+
+        _al?.Dispose();
+        _alc?.Dispose();
+
+        _logger.LogInformation("OpenAL resources disposed");
+    }
+
+    private struct WaveAudioData
+    {
+        public byte[] Data;
+        public BufferFormat Format;
+        public int SampleRate;
+        public short NumChannels;
+        public short BitsPerSample;
     }
 }
+
+/* TODO: Audio Management
+•	Audio source pooling: Reuse sources instead of creating/destroying them
+•	Fire-and-forget playback: Return immediately without blocking
+•	Audio handles: Return handles to control playing sounds (pause, stop, adjust volume mid-playback)
+•	DSP/Effects chain: Apply reverb, echo, filters, etc.
+•	Audio groups/buses: Categorize sounds (SFX, Music, Voice) with independent volume controls
+•	Streaming: For large music files to avoid memory overhead
+ */
