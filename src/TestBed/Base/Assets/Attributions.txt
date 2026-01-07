@@ -3,3 +3,6 @@ from https://opengameart.org/content/512-sound-effects-8-bit-style
 
 Music "The_Last_Encounter" by Matthew Pablo
 from https://opengameart.org/content/rpg-battle-theme-the-last-encounter-0
+
+Image "statue-sculpture-figure" by Pixabay
+from https://pixabay.com/photos/statue-sculpture-figure-1275469/
