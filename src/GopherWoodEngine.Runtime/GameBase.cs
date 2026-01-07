@@ -47,6 +47,16 @@ public abstract class GameBase : IDisposable
     }
 
     /// <summary>
+    /// Called once after the engine is initialized but before the main game loop starts.
+    /// </summary>
+    /// <remarks>
+    /// Override this method to perform one-time initialization logic such as loading assets,
+    /// setting up game state, or configuring systems. This method is called automatically by
+    /// the engine and should not be called directly.
+    /// </remarks>
+    public virtual void Initialize() { }
+
+    /// <summary>
     /// Update game states, optionally based on delta time, prior to next frame render.
     /// </summary>
     /// <remarks>

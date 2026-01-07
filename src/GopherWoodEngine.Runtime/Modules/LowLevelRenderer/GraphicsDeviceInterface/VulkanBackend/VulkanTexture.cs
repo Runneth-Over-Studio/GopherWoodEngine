@@ -3,7 +3,7 @@ using System;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using Device = Silk.NET.Vulkan.Device;
 
-namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Vulkan;
+namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDeviceInterface.VulkanBackend;
 
 internal unsafe sealed class VulkanTexture : IDisposable
 {

@@ -1,10 +1,10 @@
 ﻿using Silk.NET.Core;
+using Silk.NET.Core.Contexts;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
-using Silk.NET.Windowing;
 using System;
 
-namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.VirtualScreen.Vulkan;
+namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDeviceInterface.VulkanBackend;
 
 internal unsafe sealed class VulkanSurface : IDisposable
 {
@@ -16,11 +16,11 @@ internal unsafe sealed class VulkanSurface : IDisposable
     private readonly Instance _instance;
     private bool _isDisposed = false;
 
-    public VulkanSurface(IWindow window, Vk vk, Instance instance)
+    public VulkanSurface(IVkSurface vkSurface, VulkanAPI vulkanAPI)
     {
-        _instance = instance;
-        _khrSurface = CreateSurfaceExtension(vk, instance);
-        _surfaceKHR = CreateAbstractSurface(window, instance);
+        _instance = vulkanAPI.Instance;
+        _khrSurface = CreateSurfaceExtension(vulkanAPI);
+        _surfaceKHR = CreateAbstractSurface(vkSurface, vulkanAPI.Instance);
     }
 
     // Determine whether queue family has the capability of presenting to our window surface.
@@ -82,9 +82,9 @@ internal unsafe sealed class VulkanSurface : IDisposable
         };
     }
 
-    private static KhrSurface CreateSurfaceExtension(Vk vk, Instance instance)
+    private static KhrSurface CreateSurfaceExtension(VulkanAPI vulkanAPI)
     {
-        if (!vk.TryGetInstanceExtension(instance, out KhrSurface khrSurface))
+        if (!vulkanAPI.Vk.TryGetInstanceExtension(vulkanAPI.Instance, out KhrSurface khrSurface))
         {
             throw new NotSupportedException("KHR_surface extension not found.");
         }
@@ -92,9 +92,9 @@ internal unsafe sealed class VulkanSurface : IDisposable
         return khrSurface;
     }
 
-    private static SurfaceKHR CreateAbstractSurface(IWindow window, Instance instance)
+    private static SurfaceKHR CreateAbstractSurface(IVkSurface vkSurface, Instance instance)
     {
-        SurfaceKHR surfaceKHR = window.VkSurface!.Create<AllocationCallbacks>(instance.ToHandle(), null).ToSurface();
+        SurfaceKHR surfaceKHR = vkSurface.Create<AllocationCallbacks>(instance.ToHandle(), null).ToSurface();
 
         return surfaceKHR;
     }

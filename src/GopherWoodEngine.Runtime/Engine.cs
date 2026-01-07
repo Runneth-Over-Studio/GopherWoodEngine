@@ -1,6 +1,7 @@
 ﻿using GopherWoodEngine.Runtime.Modules;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Silk.NET.Windowing;
 using System;
 
 namespace GopherWoodEngine.Runtime;
@@ -18,8 +19,8 @@ public class Engine : IDisposable
     /// </summary>
     public IEventSystem EventSystem { get; }
 
-    private readonly IVirtualScreen _virtualScreen;
-    private readonly IGraphicsDevice _graphicsDevice;
+    private readonly IWindow _window;
+    private readonly IGraphicsDeviceInterface _graphicsDevice;
     private readonly IPhysicalDeviceIO _physicalDeviceIO;
     private readonly ILogger<Engine> _logger;
     private readonly GameBase _game;
@@ -37,15 +38,14 @@ public class Engine : IDisposable
         IServiceProvider provider = services.BuildServiceProvider();
         Ioc.Default.ConfigureServices(provider);
 
-        _virtualScreen = Ioc.Default.GetRequiredService<IVirtualScreen>();
-        _graphicsDevice = Ioc.Default.GetRequiredService<IGraphicsDevice>();
+        _window = Ioc.Default.GetRequiredService<IWindow>();
+        _graphicsDevice = Ioc.Default.GetRequiredService<IGraphicsDeviceInterface>();
         _physicalDeviceIO = Ioc.Default.GetRequiredService<IPhysicalDeviceIO>();
         _logger = Ioc.Default.GetRequiredService<ILogger<Engine>>();
         _game = game;
 
         EventSystem = Ioc.Default.GetRequiredService<IEventSystem>();
 
-        _virtualScreen.HookWindowEvents(EventSystem);
         EventSystem.Subscribe<WindowUpdateEventArgs>(OnUpdate);
         EventSystem.Subscribe<WindowRenderEventArgs>(OnRender);
         EventSystem.Subscribe<WindowResizeEventArgs>(OnResize);
@@ -59,9 +59,11 @@ public class Engine : IDisposable
     /// </summary>
     public void Run()
     {
+        _game.Initialize();
+
         _logger.LogDebug("Initiating game loop...");
 
-        _virtualScreen.RunWindowMessageLoop();
+        _window.Run();
 
         _logger.LogDebug("Exited game loop.");
     }
@@ -113,6 +115,7 @@ public class Engine : IDisposable
                 _isRunning = false;
 
                 _graphicsDevice.Dispose();
+                _window.Dispose();
                 EventSystem.Dispose();
 
                 _logger.LogDebug("Engine disposed.");

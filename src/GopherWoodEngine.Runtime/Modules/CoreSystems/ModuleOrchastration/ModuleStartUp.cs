@@ -2,10 +2,13 @@
 
 namespace GopherWoodEngine.Runtime.Modules;
 
-internal static class DependencyInjection
+internal static class ModuleStartUp
 {
     public static IServiceCollection AddEngineServices(this IServiceCollection services, EngineConfig engineConfig)
     {
+        // Platform Independence
+        services.AddWindowing(engineConfig);
+
         // Core Systems
         services.AddEngineLogging();
         services.AddSingleton<IRandomNumberGenerator>(new RandomNumberGenerator(seed: engineConfig.RandomSeed));
@@ -14,8 +17,7 @@ internal static class DependencyInjection
         services.AddSingleton<IEventSystem, EventSystem>();
 
         // Low-Level Renderer
-        services.AddSingleton<IVirtualScreen>(sp => ActivatorUtilities.CreateInstance<VulkanVirtualScreen>(sp, engineConfig));
-        services.AddSingleton<IGraphicsDevice, VulkanGraphicsDevice>();
+        services.AddSingleton<IGraphicsDeviceInterface>(sp => ActivatorUtilities.CreateInstance<VulkanGraphicsDeviceInterface>(sp, engineConfig));
 
         // Human Interface Device
         services.AddSingleton<IPhysicalDeviceIO, PhysicalDeviceIO>();
