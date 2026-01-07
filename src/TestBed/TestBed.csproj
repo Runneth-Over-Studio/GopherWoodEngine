@@ -22,10 +22,4 @@
     <ProjectReference Include="..\GopherWoodEngine.Runtime\GopherWoodEngine.Runtime.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Base\Assets\Images\" />
-    <Folder Include="Base\Assets\Sounds\" />
-    <Folder Include="Base\Layouts\" />
-  </ItemGroup>
-
 </Project>
