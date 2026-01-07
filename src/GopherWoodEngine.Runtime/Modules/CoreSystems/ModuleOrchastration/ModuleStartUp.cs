@@ -22,6 +22,9 @@ internal static class ModuleStartUp
         // Human Interface Device
         services.AddSingleton<IPhysicalDeviceIO, PhysicalDeviceIO>();
 
+        // Audio
+        services.AddSingleton<IWavePlayer, OpenALWavePlayer>();
+
         return services;
     }
 }

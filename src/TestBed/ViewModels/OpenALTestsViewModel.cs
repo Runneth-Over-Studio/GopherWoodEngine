@@ -7,15 +7,15 @@ using System.Threading.Tasks;
 
 namespace TestBed.ViewModels;
 
-public partial class VulkanTestsViewModel : BaseViewModel
+public partial class OpenALTestsViewModel : BaseViewModel
 {
     [ObservableProperty]
     string _selectedTest;
 
     [ObservableProperty]
-    string[] _tests = ["Hello Triangle", "Something", "Texture Mapping"];
+    string[] _tests = ["Looping Sound", "Music"];
 
-    public VulkanTestsViewModel()
+    public OpenALTestsViewModel()
     {
         _selectedTest = Tests.First();
     }
