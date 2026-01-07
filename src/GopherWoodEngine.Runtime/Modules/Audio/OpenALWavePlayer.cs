@@ -1,10 +1,13 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using GopherWoodEngine.Runtime.Modules.Audio.DTOs;
+using Microsoft.Extensions.Logging;
 using Silk.NET.OpenAL;
 using System;
 using System.Buffers.Binary;
+using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
 using System.Text;
+using System.Threading;
 
 namespace GopherWoodEngine.Runtime.Modules;
 
@@ -23,6 +26,8 @@ public sealed class OpenALWavePlayer : IWavePlayer
     private readonly ALContext _alc;
     private unsafe Device* _device;
     private unsafe Context* _context;
+    private readonly List<ActiveSound> _activeSounds = [];
+    private readonly Lock _lock = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="OpenALWavePlayer"/> class.
@@ -34,7 +39,7 @@ public sealed class OpenALWavePlayer : IWavePlayer
         _alc = ALContext.GetApi();
         _al = AL.GetApi();
 
-        _device = _alc.OpenDevice("");
+        _device = _alc.OpenDevice(string.Empty);
         if (_device == null)
         {
             throw new InvalidOperationException("Could not create OpenAL device");
@@ -58,71 +63,65 @@ public sealed class OpenALWavePlayer : IWavePlayer
     /// <remarks>
     /// This method is suitable for UI sounds, background music, and 2D games.
     /// Audio is played without spatial/positional effects.
+    /// This method returns immediately without blocking (fire-and-forget).
     /// </remarks>
     public unsafe void PlayWave2D(string waveFilePath, float volume = 1.0f, bool looping = false)
     {
-        var audioData = LoadWaveFile(waveFilePath);
+        OpenALAudioData? audioData = LoadWaveFile(waveFilePath);
         if (audioData == null)
+        {
             return;
+        }
 
         uint source = _al.GenSource();
         uint buffer = _al.GenBuffer();
 
-        var error = _al.GetError();
+        AudioError error = _al.GetError();
         if (error != AudioError.NoError)
         {
             _logger.LogError("Failed to create OpenAL source/buffer: {Error}", error);
             return;
         }
 
-        try
+        // Buffer the audio data
+        fixed (byte* pData = audioData.Value.Data)
         {
-            // Buffer the audio data
-            fixed (byte* pData = audioData.Value.Data)
-            {
-                _al.BufferData(buffer, audioData.Value.Format, pData, audioData.Value.Data.Length, audioData.Value.SampleRate);
-            }
-
-            error = _al.GetError();
-            if (error != AudioError.NoError)
-            {
-                _logger.LogError("Failed to buffer audio data: {Error}", error);
-                return;
-            }
-
-            // Configure source for 2D playback
-            _al.SetSourceProperty(source, SourceInteger.Buffer, buffer);
-            _al.SetSourceProperty(source, SourceBoolean.Looping, looping);
-            _al.SetSourceProperty(source, SourceFloat.Gain, Math.Clamp(volume, 0.0f, 1.0f));
-            _al.SetSourceProperty(source, SourceBoolean.SourceRelative, true); // Make it non-positional
-
-            // Play the audio
-            _al.SourcePlay(source);
-            error = _al.GetError();
-            if (error != AudioError.NoError)
-            {
-                _logger.LogError("Failed to play audio source: {Error}", error);
-                return;
-            }
-
-            _logger.LogInformation("Playing 2D audio: {FilePath} (Volume: {Volume}, Looping: {Looping})",
-                waveFilePath, volume, looping);
-
-            // Wait for playback to complete (only if not looping)
-            if (!looping)
-            {
-                WaitForPlaybackCompletion(source);
-            }
+            _al.BufferData(buffer, audioData.Value.Format, pData, audioData.Value.Data.Length, audioData.Value.SampleRate);
         }
-        finally
+
+        error = _al.GetError();
+        if (error != AudioError.NoError)
         {
-            // Cleanup
-            _al.SourceStop(source);
+            _logger.LogError("Failed to buffer audio data: {Error}", error);
             _al.DeleteSource(source);
             _al.DeleteBuffer(buffer);
+            return;
         }
 
-        _logger.LogDebug("2D audio playback completed and resources cleaned up");
+        // Configure source for 2D playback
+        _al.SetSourceProperty(source, SourceInteger.Buffer, buffer);
+        _al.SetSourceProperty(source, SourceBoolean.Looping, looping);
+        _al.SetSourceProperty(source, SourceFloat.Gain, Math.Clamp(volume, 0.0f, 1.0f));
+        _al.SetSourceProperty(source, SourceBoolean.SourceRelative, true); // Make it non-positional
+
+        // Play the audio
+        _al.SourcePlay(source);
+        error = _al.GetError();
+        if (error != AudioError.NoError)
+        {
+            _logger.LogError("Failed to play audio source: {Error}", error);
+            _al.DeleteSource(source);
+            _al.DeleteBuffer(buffer);
+            return;
+        }
+
+        _logger.LogInformation("Playing 2D audio: {FilePath} (Volume: {Volume}, Looping: {Looping})", waveFilePath, volume, looping);
+
+        // Track the active sound for cleanup
+        lock (_lock)
+        {
+            _activeSounds.Add(new ActiveSound { Source = source, Buffer = buffer, IsLooping = looping });
+        }
     }
 
     /// <inheritdoc/>
@@ -133,7 +132,7 @@ public sealed class OpenALWavePlayer : IWavePlayer
     /// <param name="looping">Whether the audio should loop continuously. Default is false.</param>
     /// <param name="referenceDistance">The distance at which the volume is at maximum. Default is 1.0.</param>
     /// <param name="maxDistance">The maximum distance beyond which the sound is no longer attenuated. Default is 100.0.</param>
-    /// <param name="rolloffFactor">The rate at which sound attenuates with distance. Default is 1.0.</param>
+    /// <param name="rollOffFactor">The rate at which sound attenuates with distance. Default is 1.0.</param>
     /// <remarks>
     /// <para>
     /// This method provides spatial 3D audio suitable for games with positional sound effects.
@@ -142,12 +141,17 @@ public sealed class OpenALWavePlayer : IWavePlayer
     /// <para>
     /// Note: For stereo audio files, spatial effects are limited. Use mono audio for best 3D positioning.
     /// </para>
+    /// <para>
+    /// This method returns immediately without blocking (fire-and-forget).
+    /// </para>
     /// </remarks>
-    public unsafe void PlayWave3D(string waveFilePath, Vector3 position, Vector3 velocity = default, float volume = 1.0f, bool looping = false, float referenceDistance = 1.0f, float maxDistance = 100.0f, float rolloffFactor = 1.0f)
+    public unsafe void PlayWave3D(string waveFilePath, Vector3 position, Vector3 velocity = default, float volume = 1.0f, bool looping = false, float referenceDistance = 1.0f, float maxDistance = 100.0f, float rollOffFactor = 1.0f)
     {
-        var audioData = LoadWaveFile(waveFilePath);
+        OpenALAudioData? audioData = LoadWaveFile(waveFilePath);
         if (audioData == null)
+        {
             return;
+        }
 
         // Warn if using stereo for 3D audio
         if (audioData.Value.Format == BufferFormat.Stereo8 || audioData.Value.Format == BufferFormat.Stereo16)
@@ -158,71 +162,61 @@ public sealed class OpenALWavePlayer : IWavePlayer
         uint source = _al.GenSource();
         uint buffer = _al.GenBuffer();
 
-        var error = _al.GetError();
+        AudioError error = _al.GetError();
         if (error != AudioError.NoError)
         {
             _logger.LogError("Failed to create OpenAL source/buffer: {Error}", error);
             return;
         }
 
-        try
+        // Buffer the audio data
+        fixed (byte* pData = audioData.Value.Data)
         {
-            // Buffer the audio data
-            fixed (byte* pData = audioData.Value.Data)
-            {
-                _al.BufferData(buffer, audioData.Value.Format, pData, audioData.Value.Data.Length, audioData.Value.SampleRate);
-            }
-
-            error = _al.GetError();
-            if (error != AudioError.NoError)
-            {
-                _logger.LogError("Failed to buffer audio data: {Error}", error);
-                return;
-            }
-
-            // Configure source for 3D spatial playback
-            _al.SetSourceProperty(source, SourceInteger.Buffer, buffer);
-            _al.SetSourceProperty(source, SourceBoolean.Looping, looping);
-            _al.SetSourceProperty(source, SourceFloat.Gain, Math.Clamp(volume, 0.0f, 1.0f));
-            _al.SetSourceProperty(source, SourceBoolean.SourceRelative, false); // Enable spatial positioning
-
-            // Set 3D position and velocity
-            _al.SetSourceProperty(source, SourceVector3.Position, position.X, position.Y, position.Z);
-            _al.SetSourceProperty(source, SourceVector3.Velocity, velocity.X, velocity.Y, velocity.Z);
-
-            // Set distance attenuation parameters
-            _al.SetSourceProperty(source, SourceFloat.ReferenceDistance, referenceDistance);
-            _al.SetSourceProperty(source, SourceFloat.MaxDistance, maxDistance);
-            _al.SetSourceProperty(source, SourceFloat.RolloffFactor, rolloffFactor);
-
-            // Play the audio
-            _al.SourcePlay(source);
-            error = _al.GetError();
-            if (error != AudioError.NoError)
-            {
-                _logger.LogError("Failed to play audio source: {Error}", error);
-                return;
-            }
-
-            _logger.LogInformation(
-                "Playing 3D audio: {FilePath} at position {Position} (Volume: {Volume}, Looping: {Looping})",
-                waveFilePath, position, volume, looping);
-
-            // Wait for playback to complete (only if not looping)
-            if (!looping)
-            {
-                WaitForPlaybackCompletion(source);
-            }
+            _al.BufferData(buffer, audioData.Value.Format, pData, audioData.Value.Data.Length, audioData.Value.SampleRate);
         }
-        finally
+
+        error = _al.GetError();
+        if (error != AudioError.NoError)
         {
-            // Cleanup
-            _al.SourceStop(source);
+            _logger.LogError("Failed to buffer audio data: {Error}", error);
             _al.DeleteSource(source);
             _al.DeleteBuffer(buffer);
+            return;
         }
 
-        _logger.LogDebug("3D audio playback completed and resources cleaned up");
+        // Configure source for 3D spatial playback
+        _al.SetSourceProperty(source, SourceInteger.Buffer, buffer);
+        _al.SetSourceProperty(source, SourceBoolean.Looping, looping);
+        _al.SetSourceProperty(source, SourceFloat.Gain, Math.Clamp(volume, 0.0f, 1.0f));
+        _al.SetSourceProperty(source, SourceBoolean.SourceRelative, false); // Enable spatial positioning
+
+        // Set 3D position and velocity
+        _al.SetSourceProperty(source, SourceVector3.Position, position.X, position.Y, position.Z);
+        _al.SetSourceProperty(source, SourceVector3.Velocity, velocity.X, velocity.Y, velocity.Z);
+
+        // Set distance attenuation parameters
+        _al.SetSourceProperty(source, SourceFloat.ReferenceDistance, referenceDistance);
+        _al.SetSourceProperty(source, SourceFloat.MaxDistance, maxDistance);
+        _al.SetSourceProperty(source, SourceFloat.RolloffFactor, rollOffFactor);
+
+        // Play the audio
+        _al.SourcePlay(source);
+        error = _al.GetError();
+        if (error != AudioError.NoError)
+        {
+            _logger.LogError("Failed to play audio source: {Error}", error);
+            _al.DeleteSource(source);
+            _al.DeleteBuffer(buffer);
+            return;
+        }
+
+        _logger.LogInformation("Playing 3D audio: {FilePath} at position {Position} (Volume: {Volume}, Looping: {Looping})", waveFilePath, position, volume, looping);
+
+        // Track the active sound for cleanup
+        lock (_lock)
+        {
+            _activeSounds.Add(new ActiveSound { Source = source, Buffer = buffer, IsLooping = looping });
+        }
     }
 
     /// <inheritdoc/>
@@ -245,11 +239,49 @@ public sealed class OpenALWavePlayer : IWavePlayer
             _al.SetListenerProperty(ListenerFloatArray.Orientation, pOrientation);
         }
 
-        _logger.LogTrace("Listener position updated: Position={Position}, Forward={Forward}, Up={Up}",
-            position, forward, up);
+        _logger.LogTrace("Listener position updated: Position={Position}, Forward={Forward}, Up={Up}", position, forward, up);
     }
 
-    private WaveAudioData? LoadWaveFile(string waveFilePath)
+    /// <inheritdoc/>
+    public unsafe void Update()
+    {
+        lock (_lock)
+        {
+            for (int i = _activeSounds.Count - 1; i >= 0; i--)
+            {
+                ActiveSound sound = _activeSounds[i];
+
+                _al.GetSourceProperty(sound.Source, GetSourceInteger.SourceState, out int state);
+
+                // Clean up non-looping sounds that have finished playing
+                if (!sound.IsLooping && (SourceState)state != SourceState.Playing)
+                {
+                    _al.DeleteSource(sound.Source);
+                    _al.DeleteBuffer(sound.Buffer);
+                    _activeSounds.RemoveAt(i);
+                    _logger.LogDebug("Cleaned up finished audio source");
+                }
+            }
+        }
+    }
+
+    /// <inheritdoc/>
+    public unsafe void StopAll()
+    {
+        lock (_lock)
+        {
+            foreach (var sound in _activeSounds)
+            {
+                _al.SourceStop(sound.Source);
+                _al.DeleteSource(sound.Source);
+                _al.DeleteBuffer(sound.Buffer);
+            }
+            _activeSounds.Clear();
+            _logger.LogInformation("Stopped all audio playback");
+        }
+    }
+
+    private OpenALAudioData? LoadWaveFile(string waveFilePath)
     {
         if (string.IsNullOrWhiteSpace(waveFilePath))
         {
@@ -267,8 +299,7 @@ public sealed class OpenALWavePlayer : IWavePlayer
         int index = 0;
 
         // Validate RIFF header
-        if (file.Length < 12 ||
-            file[index++] != 'R' || file[index++] != 'I' || file[index++] != 'F' || file[index++] != 'F')
+        if (file.Length < 12 || file[index++] != 'R' || file[index++] != 'I' || file[index++] != 'F' || file[index++] != 'F')
         {
             _logger.LogError("Given file is not in RIFF format: {FilePath}", waveFilePath);
             return null;
@@ -290,11 +321,17 @@ public sealed class OpenALWavePlayer : IWavePlayer
         BufferFormat format = 0;
         bool formatParsed = false;
         byte[]? audioData = null;
+        Span<char> chars = stackalloc char[4];
 
         // Parse WAVE chunks
         while (index + 8 <= file.Length)
         {
-            string identifier = "" + (char)file[index++] + (char)file[index++] + (char)file[index++] + (char)file[index++];
+            chars[0] = (char)file[index++];
+            chars[1] = (char)file[index++];
+            chars[2] = (char)file[index++];
+            chars[3] = (char)file[index++];
+            string identifier = new(chars);
+
             int size = BinaryPrimitives.ReadInt32LittleEndian(file.Slice(index, 4));
             index += 4;
 
@@ -392,8 +429,8 @@ public sealed class OpenALWavePlayer : IWavePlayer
             }
             else if (identifier == "iXML")
             {
-                var xmlData = file.Slice(index, size);
-                var str = Encoding.ASCII.GetString(xmlData);
+                ReadOnlySpan<byte> xmlData = file.Slice(index, size);
+                string str = Encoding.ASCII.GetString(xmlData);
                 _logger.LogTrace("iXML Chunk: {XmlContent}", str);
                 index += size;
             }
@@ -410,13 +447,9 @@ public sealed class OpenALWavePlayer : IWavePlayer
             return null;
         }
 
-        _logger.LogDebug(
-            "Successfully loaded WAVE file: {Channels} channel(s), {SampleRate} Hz, {BitsPerSample}-bit",
-            numChannels,
-            sampleRate,
-            bitsPerSample);
+        _logger.LogDebug("Successfully loaded WAVE file: {Channels} channel(s), {SampleRate} Hz, {BitsPerSample}-bit", numChannels, sampleRate, bitsPerSample);
 
-        return new WaveAudioData
+        return new OpenALAudioData
         {
             Data = audioData,
             Format = format,
@@ -426,21 +459,11 @@ public sealed class OpenALWavePlayer : IWavePlayer
         };
     }
 
-    private unsafe void WaitForPlaybackCompletion(uint source)
-    {
-        int state;
-        do
-        {
-            _al.GetSourceProperty(source, GetSourceInteger.SourceState, out state);
-            System.Threading.Thread.Sleep(10); // Avoid busy waiting
-        } while ((SourceState)state == SourceState.Playing);
-    }
-
-    /// <summary>
-    /// Releases OpenAL resources.
-    /// </summary>
+    /// <inheritdoc/>
     public unsafe void Dispose()
     {
+        StopAll();
+
         if (_context != null)
         {
             _alc.MakeContextCurrent(null);
@@ -459,20 +482,10 @@ public sealed class OpenALWavePlayer : IWavePlayer
 
         _logger.LogInformation("OpenAL resources disposed");
     }
-
-    private struct WaveAudioData
-    {
-        public byte[] Data;
-        public BufferFormat Format;
-        public int SampleRate;
-        public short NumChannels;
-        public short BitsPerSample;
-    }
 }
 
 /* TODO: Audio Management
 •	Audio source pooling: Reuse sources instead of creating/destroying them
-•	Fire-and-forget playback: Return immediately without blocking
 •	Audio handles: Return handles to control playing sounds (pause, stop, adjust volume mid-playback)
 •	DSP/Effects chain: Apply reverb, echo, filters, etc.
 •	Audio groups/buses: Categorize sounds (SFX, Music, Voice) with independent volume controls

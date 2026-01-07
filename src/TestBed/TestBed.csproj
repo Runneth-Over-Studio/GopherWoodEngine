@@ -8,6 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="Base\Assets\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+	
+  <ItemGroup>
     <PackageReference Include="RazorConsole.Core" Version="0.3.0" />
     <PackageReference Include="RunnethOverStudio.AppToolkit" Version="1.0.2" />
   </ItemGroup>

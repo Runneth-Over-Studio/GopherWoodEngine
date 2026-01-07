@@ -16,10 +16,23 @@ public interface IWavePlayer : IDisposable
     /// <summary>
     /// Plays a WAVE audio file with 3D spatial audio (positional audio with attenuation).
     /// </summary>
-    public unsafe void PlayWave3D(string waveFilePath, Vector3 position, Vector3 velocity = default, float volume = 1.0f, bool looping = false, float referenceDistance = 1.0f, float maxDistance = 100.0f, float rolloffFactor = 1.0f);
+    public unsafe void PlayWave3D(string waveFilePath, Vector3 position, Vector3 velocity = default, float volume = 1.0f, bool looping = false, float referenceDistance = 1.0f, float maxDistance = 100.0f, float rollOffFactor = 1.0f);
 
     /// <summary>
     /// Sets the 3D listener position and orientation in world space.
     /// </summary>
     public unsafe void SetListenerPosition(Vector3 position, Vector3 forward, Vector3 up, Vector3 velocity = default);
+
+    /// <summary>
+    /// Updates the audio system, cleaning up finished sounds.
+    /// </summary>
+    /// <remarks>
+    /// This should be called regularly (e.g., each frame) to clean up completed non-looping sounds.
+    /// </remarks>
+    void Update();
+
+    /// <summary>
+    /// Stops all currently playing audio.
+    /// </summary>
+    void StopAll();
 }

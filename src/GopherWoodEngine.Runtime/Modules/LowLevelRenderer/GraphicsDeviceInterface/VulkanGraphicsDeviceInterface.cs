@@ -26,8 +26,6 @@ internal unsafe sealed class VulkanGraphicsDeviceInterface : IGraphicsDeviceInte
 
         LogGraphicsDeviceInfo();
 
-        LogGraphicsDeviceInfo();
-
         eventSystem.Subscribe<WindowRenderEventArgs>((s, e) => _presenter?.DrawFrame(e.DeltaTime));
     }
 

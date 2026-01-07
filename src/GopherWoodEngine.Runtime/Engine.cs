@@ -19,6 +19,15 @@ public class Engine : IDisposable
     /// </summary>
     public IEventSystem EventSystem { get; }
 
+    /// <summary>
+    /// Gets the wave audio player for playing 2D and 3D positional sound effects and music.
+    /// </summary>
+    /// <remarks>
+    /// The wave player supports PCM-encoded WAVE files (mono or stereo, 8 or 16 bits per sample).
+    /// All playback is fire-and-forget and non-blocking.
+    /// </remarks>
+    public IWavePlayer WavePlayer { get; }
+
     private readonly IWindow _window;
     private readonly IGraphicsDeviceInterface _graphicsDevice;
     private readonly IPhysicalDeviceIO _physicalDeviceIO;
@@ -45,6 +54,7 @@ public class Engine : IDisposable
         _game = game;
 
         EventSystem = Ioc.Default.GetRequiredService<IEventSystem>();
+        WavePlayer = Ioc.Default.GetRequiredService<IWavePlayer>();
 
         EventSystem.Subscribe<WindowUpdateEventArgs>(OnUpdate);
         EventSystem.Subscribe<WindowRenderEventArgs>(OnRender);
@@ -72,6 +82,7 @@ public class Engine : IDisposable
     {
         if (_isRunning && !_isSuspended)
         {
+            WavePlayer.Update();
             _game.Update(e.DeltaTime);
         }
     }
@@ -114,6 +125,7 @@ public class Engine : IDisposable
             {
                 _isRunning = false;
 
+                WavePlayer.Dispose();
                 _graphicsDevice.Dispose();
                 _window.Dispose();
                 EventSystem.Dispose();
