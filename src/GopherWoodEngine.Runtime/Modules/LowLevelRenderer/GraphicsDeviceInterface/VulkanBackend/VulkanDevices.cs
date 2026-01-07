@@ -1,5 +1,4 @@
-﻿using GopherWoodEngine.Runtime.Modules.LowLevelRenderer.VirtualScreen.Vulkan;
-using Silk.NET.Core.Native;
+﻿using Silk.NET.Core.Native;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 using System;
@@ -9,7 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Device = Silk.NET.Vulkan.Device;
 
-namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Vulkan;
+namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDeviceInterface.VulkanBackend;
 
 internal unsafe sealed class VulkanDevices : IDisposable
 {
@@ -34,15 +33,15 @@ internal unsafe sealed class VulkanDevices : IDisposable
     private readonly Vk _vk;
     private bool _isDisposed = false;
 
-    public VulkanDevices(VulkanVirtualScreen virtualScreen)
+    public VulkanDevices(VulkanAPI vulkanAPI, VulkanSurface surface)
     {
-        _vk = virtualScreen.Vk;
+        _vk = vulkanAPI.Vk;
 
-        (PhysicalDevice physicalDevice, QueueFamilyIndices indices) = SelectPhysicalDevice(virtualScreen.Instance, _vk, virtualScreen.Surface);
+        (PhysicalDevice physicalDevice, QueueFamilyIndices indices) = SelectPhysicalDevice(vulkanAPI.Instance, _vk, surface);
 
         PhysicalDevice = physicalDevice;
         QueueFamilyIndices = indices;
-        LogicalDevice = CreateLogicalDevice(_vk, physicalDevice, QueueFamilyIndices, virtualScreen.Surface, virtualScreen.ValidationLayersEnabled);
+        LogicalDevice = CreateLogicalDevice(_vk, physicalDevice, QueueFamilyIndices, surface, vulkanAPI.ValidationLayersEnabled);
 
         _vk.GetDeviceQueue(LogicalDevice, indices.GraphicsIndex, 0, out Queue graphicsQueue);
         _vk.GetDeviceQueue(LogicalDevice, indices.PresentIndex, 0, out Queue presentQueue);

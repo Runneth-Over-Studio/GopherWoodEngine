@@ -6,7 +6,7 @@ using System.Linq;
 using System.Reflection;
 using Device = Silk.NET.Vulkan.Device;
 
-namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDevice.Vulkan;
+namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDeviceInterface.VulkanBackend;
 
 internal unsafe sealed class VulkanPipeline : IDisposable
 {
@@ -28,14 +28,14 @@ internal unsafe sealed class VulkanPipeline : IDisposable
     private readonly VulkanSwapChain _swapChain;
     private bool _isDisposed = false;
 
-    public VulkanPipeline(Vk vk, Device logicalDevice, VulkanSwapChain swapChain, DescriptorSetLayout descriptorSetLayout)
+    public VulkanPipeline(Vk vk, Device logicalDevice, VulkanSwapChain swapChain)
     {
         _vk = vk;
         _logicalDevice = logicalDevice;
         _swapChain = swapChain;
         RenderPass = CreateRenderPass(_vk, _logicalDevice, swapChain.ImageFormat);
-        DescriptorSetLayout = descriptorSetLayout;
-        PipelineLayout = CreatePipelineLayout(_vk, _logicalDevice, descriptorSetLayout);
+        DescriptorSetLayout = CreateDescriptorSetLayout(_vk, logicalDevice);
+        PipelineLayout = CreatePipelineLayout(_vk, _logicalDevice, DescriptorSetLayout);
 
         GraphicsPipeline = CreateGraphicsPipeline(
             _vk,
@@ -122,6 +122,32 @@ internal unsafe sealed class VulkanPipeline : IDisposable
         }
 
         return renderPass;
+    }
+
+    private static DescriptorSetLayout CreateDescriptorSetLayout(Vk vk, Device logicalDevice)
+    {
+        DescriptorSetLayoutBinding uboLayoutBinding = new()
+        {
+            Binding = 0,
+            DescriptorCount = 1,
+            DescriptorType = DescriptorType.UniformBuffer,
+            PImmutableSamplers = null,
+            StageFlags = ShaderStageFlags.VertexBit
+        };
+
+        DescriptorSetLayoutCreateInfo layoutInfo = new()
+        {
+            SType = StructureType.DescriptorSetLayoutCreateInfo,
+            BindingCount = 1,
+            PBindings = &uboLayoutBinding
+        };
+
+        if (vk.CreateDescriptorSetLayout(logicalDevice, in layoutInfo, null, out DescriptorSetLayout descriptorSetLayout) != Result.Success)
+        {
+            throw new Exception("Failed to create descriptor set layout.");
+        }
+
+        return descriptorSetLayout;
     }
 
     private static PipelineLayout CreatePipelineLayout(Vk vk, Device logicalDevice, DescriptorSetLayout descriptorSetLayout)
@@ -353,7 +379,7 @@ internal unsafe sealed class VulkanPipeline : IDisposable
             {
                 _vk.DestroyPipeline(_logicalDevice, GraphicsPipeline, null);
                 _vk.DestroyPipelineLayout(_logicalDevice, PipelineLayout, null);
-                //_vk.DestroyDescriptorSetLayout(_logicalDevice, DescriptorSetLayout, null);
+                _vk.DestroyDescriptorSetLayout(_logicalDevice, DescriptorSetLayout, null);
                 _vk.DestroyRenderPass(_logicalDevice, RenderPass, null);
             }
 

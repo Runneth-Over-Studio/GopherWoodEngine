@@ -1,6 +1,7 @@
+using Silk.NET.Input;
+using Silk.NET.Windowing;
 using System.Collections.Generic;
 using System.Linq;
-using Silk.NET.Input;
 
 namespace GopherWoodEngine.Runtime.Modules;
 
@@ -8,9 +9,9 @@ internal sealed class PhysicalDeviceIO : IPhysicalDeviceIO
 {
     public IInputContext InputContext { get; }
 
-    public PhysicalDeviceIO(IVirtualScreen virtualScreen, IEventSystem eventSystem)
+    public PhysicalDeviceIO(IWindow window, IEventSystem eventSystem)
     {
-        InputContext = virtualScreen.CreateWindowInputContext();
+        InputContext = window.CreateInput();
 
         InputContext.ConnectionChanged += (device, connected) => eventSystem.Publish(this, new InputDeviceConnectionChangedEventArgs(device, connected));
         HookGamepadEvents(InputContext.Gamepads, eventSystem);
