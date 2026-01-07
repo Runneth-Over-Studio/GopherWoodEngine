@@ -22,7 +22,7 @@
 	<PublishRepositoryUrl>true</PublishRepositoryUrl>
 	<RepositoryType>git</RepositoryType>
 	<Description>Runneth Over Studio's in-house game engine.</Description>
-	<PackageTags>game engine graphics vulkan csharp</PackageTags>
+	<PackageTags>game-engine graphics vulkan jolt-physics c-sharp</PackageTags>
 	<IncludeSymbols>true</IncludeSymbols>
 	<EmbedUntrackedSources>true</EmbedUntrackedSources>
 	<SymbolPackageFormat>snupkg</SymbolPackageFormat>
