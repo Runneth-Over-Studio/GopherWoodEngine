@@ -8,7 +8,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="Base\Assets\**\*.*">
+    <!-- Copy all assets besides shaders. -->
+    <Content Include="Base\Assets\**\*.*" Exclude="Base\Assets\Shaders\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Explicitly copy only compiled shaders. -->
+    <Content Include="Base\Assets\Shaders\**\*.spv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
