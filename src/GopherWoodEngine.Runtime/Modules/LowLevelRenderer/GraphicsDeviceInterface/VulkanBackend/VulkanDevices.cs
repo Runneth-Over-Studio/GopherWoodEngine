@@ -10,54 +10,206 @@ using Device = Silk.NET.Vulkan.Device;
 
 namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDeviceInterface.VulkanBackend;
 
+/// <summary>
+/// Manages Vulkan physical and logical devices, queue families, and command pools.
+/// </summary>
+/// <remarks>
+/// Command pools are automatically created for each available queue family, enabling efficient
+/// command buffer allocation for different types of GPU operations.
+/// </remarks>
 internal unsafe sealed class VulkanDevices : IDisposable
 {
-    // Represents a physical device (GPU) that supports Vulkan as well as other defined features.
+    /// <summary>
+    /// Represents a physical device (GPU) that supports Vulkan as well as other defined features.
+    /// </summary>
     internal PhysicalDevice PhysicalDevice { get; }
 
-    // Used to interface with the physical device, allowing for resource management and command submission.
+    /// <summary>
+    /// Used to interface with the physical device, allowing for resource management and command submission.
+    /// </summary>
     internal Device LogicalDevice { get; }
 
-    // Indices of the queue families that are supported by the physical device.
-    // Queue families allocate VkQueues, which have operations submitted to them to be asynchronously executed.
-    internal QueueFamilyIndices QueueFamilyIndices { get; }
+    /// <summary>
+    /// Contains comprehensive specifications and capabilities of the selected physical device.
+    /// </summary>
+    internal PhysicalDeviceSpecs PhysicalDeviceSpecs { get; }
 
-    // Graphics processing queue used for executing GPU commands.
-    // Command buffers on multiple threads can all be submited at once on the main thread with a single low-overhead call.
+    /// <summary>
+    /// Indices of the queue families that are supported by the physical device.
+    /// Queue families allocate VkQueues, which have operations submitted to them to be asynchronously executed.
+    /// </summary>
+    internal QueueFamilyIndices QueueFamilyIndices { get { return PhysicalDeviceSpecs.QueueFamilyIndices; } }
+
+    /// <summary>
+    /// Graphics processing queue used for executing GPU commands.
+    /// Command buffers on multiple threads can all be submited at once on the main thread with a single low-overhead call.
+    /// </summary>
     internal Queue GraphicsQueue { get; }
 
-    // Queue used to manage the presentation of items.
-    // Command buffers on multiple threads can all be submited at once on the main thread with a single low-overhead call.
+    /// <summary>
+    /// Queue used to manage the presentation of items.
+    /// Command buffers on multiple threads can all be submited at once on the main thread with a single low-overhead call.
+    /// </summary>
     internal Queue PresentQueue { get; }
 
-    private readonly Vk _vk;
-    private bool _isDisposed = false;
+    /// <summary>
+    /// Command pool for the graphics queue family.
+    /// Used to allocate command buffers for graphics operations.
+    /// </summary>
+    internal CommandPool GraphicsCommandPool { get; }
 
+    /// <summary>
+    /// Command pool for the compute queue family, if available.
+    /// Used to allocate command buffers for async compute operations.
+    /// </summary>
+    internal CommandPool? ComputeCommandPool { get; }
+
+    /// <summary>
+    /// Command pool for the transfer queue family, if available.
+    /// Used to allocate command buffers for async transfer operations.
+    /// </summary>
+    internal CommandPool? TransferCommandPool { get; }
+
+    private readonly Vk _vk;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="VulkanDevices"/> class.
+    /// </summary>
     public VulkanDevices(VulkanAPI vulkanAPI, VulkanSurface surface)
     {
         _vk = vulkanAPI.Vk;
 
-        (PhysicalDevice physicalDevice, QueueFamilyIndices indices) = SelectPhysicalDevice(vulkanAPI.Instance, _vk, surface);
-
+        (PhysicalDevice physicalDevice, PhysicalDeviceSpecs specs) = SelectBestPhysicalDevice(vulkanAPI.Instance, _vk, surface);
         PhysicalDevice = physicalDevice;
-        QueueFamilyIndices = indices;
+        PhysicalDeviceSpecs = specs;
+
         LogicalDevice = CreateLogicalDevice(_vk, physicalDevice, QueueFamilyIndices, surface, vulkanAPI.ValidationLayersEnabled);
 
-        _vk.GetDeviceQueue(LogicalDevice, indices.GraphicsIndex, 0, out Queue graphicsQueue);
-        _vk.GetDeviceQueue(LogicalDevice, indices.PresentIndex, 0, out Queue presentQueue);
+        _vk.GetDeviceQueue(LogicalDevice, specs.QueueFamilyIndices.GraphicsIndex, 0, out Queue graphicsQueue);
+        _vk.GetDeviceQueue(LogicalDevice, specs.QueueFamilyIndices.PresentIndex, 0, out Queue presentQueue);
         GraphicsQueue = graphicsQueue;
         PresentQueue = presentQueue;
+
+        // Create command pools for each queue family
+        GraphicsCommandPool = CreateCommandPool(_vk, LogicalDevice, QueueFamilyIndices.GraphicsIndex);
+
+        // Only create compute pool if we have a dedicated compute queue
+        if (QueueFamilyIndices.ComputeIndex.HasValue)
+        {
+            ComputeCommandPool = CreateCommandPool(_vk, LogicalDevice, QueueFamilyIndices.ComputeIndex.Value);
+        }
+
+        // Only create transfer pool if we have a dedicated transfer queue
+        if (QueueFamilyIndices.TransferIndex.HasValue)
+        {
+            TransferCommandPool = CreateCommandPool(_vk, LogicalDevice, QueueFamilyIndices.TransferIndex.Value);
+        }
+    }
+
+    /// <summary>
+    /// Allocates one or more command buffers from the specified command pool.
+    /// </summary>
+    /// <param name="count">The number of command buffers to allocate.</param>
+    /// <param name="commandPool">The command pool from which to allocate the buffers.</param>
+    /// <returns>An array of allocated command buffers.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when command buffer allocation fails.
+    /// </exception>
+    /// <remarks>
+    /// The allocated command buffers are primary-level buffers that can be submitted directly to queues.
+    /// Command buffers must be freed or reset before the command pool is destroyed.
+    /// </remarks>
+    internal unsafe CommandBuffer[] AllocateCommandBuffers(uint count, CommandPool commandPool)
+    {
+        CommandBuffer[] commandBuffers = new CommandBuffer[count];
+
+        CommandBufferAllocateInfo allocateInfo = new()
+        {
+            CommandPool = commandPool,
+            Level = CommandBufferLevel.Primary,
+            CommandBufferCount = count
+        };
+
+        if (_vk.AllocateCommandBuffers(LogicalDevice, in allocateInfo, out commandBuffers[0]) != Result.Success)
+        {
+            throw new InvalidOperationException("Failed to allocate command buffer(s).");
+        }
+
+        return commandBuffers;
+    }
+
+    /// <summary>
+    /// Allocates and begins recording a single-use command buffer for immediate submission.
+    /// </summary>
+    /// <param name="commandPool">The command pool from which to allocate the command buffer.</param>
+    /// <returns>A command buffer ready for recording one-time commands.</returns>
+    /// <remarks>
+    /// <para>
+    /// This method is designed for commands that will be executed once and then discarded,
+    /// such as one-time resource transfers or initialization operations.
+    /// </para>
+    /// <para>
+    /// The command buffer is created with the <see cref="CommandBufferUsageFlags.OneTimeSubmitBit"/> flag,
+    /// indicating to the driver that it will be submitted exactly once for optimization purposes.
+    /// </para>
+    /// <para>
+    /// After recording commands, use <see cref="EndSingleUseCommandBuffer"/> to submit and free the buffer.
+    /// </para>
+    /// </remarks>
+    internal unsafe CommandBuffer BeginSingleUseCommandBuffer(CommandPool commandPool)
+    {
+        CommandBuffer commandBuffer = AllocateCommandBuffers(1, commandPool)[0];
+
+        CommandBufferBeginInfo beginInfo = new()
+        {
+            Flags = CommandBufferUsageFlags.OneTimeSubmitBit
+        };
+
+        VulkanUtilities.AssertVk(_vk.BeginCommandBuffer(commandBuffer, in beginInfo));
+
+        return commandBuffer;
+    }
+
+    /// <summary>
+    /// Ends recording, submits, and frees a single-use command buffer.
+    /// </summary>
+    /// <param name="commandBuffer">The command buffer to end and submit.</param>
+    /// <param name="queue">The queue to which the command buffer will be submitted.</param>
+    /// <param name="commandPool">The command pool from which the buffer was allocated.</param>
+    /// <remarks>
+    /// <para>
+    /// This is a synchronous operation that blocks until all commands have been executed.
+    /// It is suitable for initialization and one-time operations but should not be used
+    /// in performance-critical rendering loops.
+    /// </para>
+    /// <para>
+    /// This method should be paired with <see cref="BeginSingleUseCommandBuffer"/> for one-time command execution patterns.
+    /// </para>
+    /// </remarks>
+    internal unsafe void EndSingleUseCommandBuffer(CommandBuffer commandBuffer, Queue queue, CommandPool commandPool)
+    {
+        VulkanUtilities.AssertVk(_vk.EndCommandBuffer(commandBuffer));
+
+        SubmitInfo submitInfo = new()
+        {
+            CommandBufferCount = 1,
+            PCommandBuffers = &commandBuffer
+        };
+
+        VulkanUtilities.AssertVk(_vk.QueueSubmit(queue, 1, in submitInfo, new Fence(handle: null)));
+        VulkanUtilities.AssertVk(_vk.QueueWaitIdle(queue));
+
+        _vk.FreeCommandBuffers(LogicalDevice, commandPool, [commandBuffer]);
     }
 
     private static string[] GetRequiredDeviceExtensions()
     {
-        return [KhrSwapchain.ExtensionName];
+        return [KhrSwapchain.ExtensionName, KhrPushDescriptor.ExtensionName];
     }
 
-    private static (PhysicalDevice, QueueFamilyIndices) SelectPhysicalDevice(Instance instance, Vk vk, VulkanSurface surface)
+    private static (PhysicalDevice, PhysicalDeviceSpecs) SelectBestPhysicalDevice(Instance instance, Vk vk, VulkanSurface surface)
     {
-        PhysicalDevice? physicalDevice = null;
-        QueueFamilyIndices? queueFamily = null;
+        List<(PhysicalDevice device, PhysicalDeviceSpecs specs, int score)> suitableDevices = [];
 
         foreach (PhysicalDevice device in vk.GetPhysicalDevices(instance))
         {
@@ -66,28 +218,57 @@ internal unsafe sealed class VulkanDevices : IDisposable
                 continue;
             }
 
-            if (IsDeviceSuitable(vk, device, surface))
+            if (!IsDeviceMinimallySuitable(vk, device, surface))
             {
-                QueueFamilyIndices? currentQueueFamily = FindQueueFamilies(vk, device, surface);
-
-                if (currentQueueFamily != null && (physicalDevice == null || (GetNumberOfOptionalIndices(currentQueueFamily) > GetNumberOfOptionalIndices(queueFamily))))
-                {
-                    physicalDevice = device;
-                    queueFamily = currentQueueFamily;
-                    break;
-                }
+                continue;
             }
+
+            QueueFamilyIndices? queueFamilyIndices = FindQueueFamilies(vk, device, surface);
+            if (queueFamilyIndices == null)
+            {
+                continue;
+            }
+
+            PhysicalDeviceProperties deviceProperties = vk.GetPhysicalDeviceProperties(device);
+            PhysicalDeviceMemoryProperties memoryProperties = vk.GetPhysicalDeviceMemoryProperties(device);
+
+            VulkanUtilities.AssertVk(surface.KhrSurface.GetPhysicalDeviceSurfaceCapabilities(device, surface.SurfaceKHR, out SurfaceCapabilitiesKHR capabilities));
+
+            uint formatCount = 0;
+            VulkanUtilities.AssertVk(surface.KhrSurface.GetPhysicalDeviceSurfaceFormats(device, surface.SurfaceKHR, ref formatCount, null));
+            SurfaceFormatKHR[] formats = new SurfaceFormatKHR[formatCount];
+            VulkanUtilities.AssertVk(surface.KhrSurface.GetPhysicalDeviceSurfaceFormats(device, surface.SurfaceKHR, ref formatCount, out formats[0]));
+
+            uint presentModeCount = 0;
+            VulkanUtilities.AssertVk(surface.KhrSurface.GetPhysicalDeviceSurfacePresentModes(device, surface.SurfaceKHR, ref presentModeCount, null));
+            PresentModeKHR[] presentModes = new PresentModeKHR[presentModeCount];
+            VulkanUtilities.AssertVk(surface.KhrSurface.GetPhysicalDeviceSurfacePresentModes(device, surface.SurfaceKHR, ref presentModeCount, out presentModes[0]));
+
+            PhysicalDeviceSpecs specs = new()
+            {
+                QueueFamilyIndices = queueFamilyIndices.Value,
+                PhysicalDeviceProperties = deviceProperties,
+                PhysicalDeviceMemoryProperties = memoryProperties,
+                SurfaceCapabilities = capabilities,
+                SurfaceFormats = formats,
+                PresentModes = presentModes
+            };
+
+            int score = ScorePhysicalDevice(specs);
+            suitableDevices.Add((device, specs, score));
         }
 
-        if (queueFamily == null || physicalDevice == null)
+        if (suitableDevices.Count == 0)
         {
             throw new Exception("Failed to find a suitable GPU.");
         }
 
-        return (physicalDevice.Value, queueFamily.Value);
+        (PhysicalDevice bestDevice, PhysicalDeviceSpecs bestSpecs, _) = suitableDevices.OrderByDescending(d => d.score).First();
+
+        return (bestDevice, bestSpecs);
     }
 
-    private static bool IsDeviceSuitable(Vk vk, PhysicalDevice physicalDevice, VulkanSurface surface)
+    private static bool IsDeviceMinimallySuitable(Vk vk, PhysicalDevice physicalDevice, VulkanSurface surface)
     {
         bool extensionsSupported = CheckDeviceExtensionsSupport(vk, physicalDevice);
 
@@ -99,8 +280,13 @@ internal unsafe sealed class VulkanDevices : IDisposable
         }
 
         vk.GetPhysicalDeviceFeatures(physicalDevice, out PhysicalDeviceFeatures supportedFeatures);
+        FormatProperties formatProperties = vk.GetPhysicalDeviceFormatProperties(physicalDevice, Format.R8G8B8A8Srgb);
 
-        return extensionsSupported && swapChainAdequate && supportedFeatures.SamplerAnisotropy;
+        return extensionsSupported
+            && swapChainAdequate
+            && supportedFeatures.SamplerAnisotropy
+            && supportedFeatures.GeometryShader
+            && formatProperties.OptimalTilingFeatures.HasFlag(FormatFeatureFlags.SampledImageFilterLinearBit);
     }
 
     private static bool CheckDeviceExtensionsSupport(Vk vk, PhysicalDevice physicalDevice)
@@ -180,18 +366,120 @@ internal unsafe sealed class VulkanDevices : IDisposable
         };
     }
 
-    private static uint GetNumberOfOptionalIndices(QueueFamilyIndices? queueFamilyIndices)
+    private static int ScorePhysicalDevice(PhysicalDeviceSpecs specs)
     {
-        if (queueFamilyIndices == null)
+        /*
+            Scores a physical device based on its capabilities and suitability for game rendering.
+            Higher scores indicate more desirable devices.
+            Scoring breakdown:
+            - Discrete GPU: +10,000 points (strongly preferred for gaming)
+            - Integrated GPU: +1,000 points (fallback option)
+            - Dedicated compute queue: +500 points (enables async compute)
+            - Dedicated transfer queue: +250 points (enables async transfers)
+            - Compute queue separate from graphics: +200 points (better parallelism)
+            - Transfer queue separate from graphics: +100 points (better parallelism)
+            - Mailbox present mode support: +50 points (triple buffering, lower latency)
+            - Immediate present mode support: +25 points (for benchmarking/testing)
+            - Multiple swapchain image support (>3): +30 points (smoother frame pacing)
+            - SRGB format support: +20 points (preferred for proper color space)
+            - VRAM capacity: +1 point per MB
+            - Max texture dimension: +1 point per 1000 pixels (capped contribution)
+        */
+
+        int score = 0;
+
+        // Strongly prefer discrete GPUs for gaming workloads
+        if (specs.PhysicalDeviceProperties.DeviceType == PhysicalDeviceType.DiscreteGpu)
         {
-            return 0;
+            score += 10000;
+        }
+        else if (specs.PhysicalDeviceProperties.DeviceType == PhysicalDeviceType.IntegratedGpu)
+        {
+            score += 1000;
+        }
+        // Virtual GPUs, CPUs, and other types get no bonus (but aren't excluded)
+
+        // Score based on queue family availability and separation
+        // Dedicated queues allow for better parallelization and async operations
+
+        // Having a compute queue at all is valuable for compute shaders
+        if (specs.QueueFamilyIndices.ComputeIndex.HasValue)
+        {
+            score += 500;
+
+            // Bonus if compute queue is on a separate queue family from graphics
+            // This allows true async compute while graphics is running
+            if (specs.QueueFamilyIndices.ComputeIndex.Value != specs.QueueFamilyIndices.GraphicsIndex)
+            {
+                score += 200;
+            }
         }
 
-        uint count = 0;
-        if (queueFamilyIndices.Value.ComputeIndex != null) { count++; }
-        if (queueFamilyIndices.Value.TransferIndex != null) { count++; }
+        // Having a transfer queue allows for async texture/buffer uploads
+        if (specs.QueueFamilyIndices.TransferIndex.HasValue)
+        {
+            score += 250;
 
-        return count;
+            // Bonus if transfer queue is on a separate queue family from graphics
+            // This allows streaming assets without blocking rendering
+            if (specs.QueueFamilyIndices.TransferIndex.Value != specs.QueueFamilyIndices.GraphicsIndex)
+            {
+                score += 100;
+            }
+        }
+
+        // Score based on present mode support
+        // Mailbox mode (triple buffering) provides low latency with smooth frame pacing
+        if (specs.PresentModes.Contains(PresentModeKHR.MailboxKhr))
+        {
+            score += 50;
+        }
+
+        // Immediate mode useful for benchmarking and uncapped frame rates
+        if (specs.PresentModes.Contains(PresentModeKHR.ImmediateKhr))
+        {
+            score += 25;
+        }
+
+        // Score based on swapchain flexibility
+        // Prefer devices that support more swapchain images for smoother frame pacing
+        uint maxSwapchainImages = specs.SurfaceCapabilities.MaxImageCount;
+        if (maxSwapchainImages == 0) // 0 means no limit
+        {
+            score += 30;
+        }
+        else if (maxSwapchainImages > 3)
+        {
+            score += 30;
+        }
+
+        // Prefer devices that support SRGB color space for proper gamma correction
+        bool supportsSRGB = specs.SurfaceFormats.Any(f => f.Format == Format.B8G8R8A8Srgb && f.ColorSpace == ColorSpaceKHR.PaceSrgbNonlinearKhr);
+        if (supportsSRGB)
+        {
+            score += 20;
+        }
+
+        // Score based on available video memory (VRAM)
+        // More VRAM = more textures, bigger scenes, better performance
+        ulong totalVRAM = 0;
+        for (int i = 0; i < specs.PhysicalDeviceMemoryProperties.MemoryHeapCount; i++)
+        {
+            MemoryHeap heap = specs.PhysicalDeviceMemoryProperties.MemoryHeaps[i];
+            if (heap.Flags.HasFlag(MemoryHeapFlags.DeviceLocalBit))
+            {
+                totalVRAM += heap.Size;
+            }
+        }
+        // Add 1 point per MB of VRAM
+        score += (int)(totalVRAM / (1024 * 1024));
+
+        // Score based on max texture dimensions (but cap the influence)
+        // Modern GPUs all support large textures; this shouldn't dominate the score
+        int textureDimensionScore = (int)specs.PhysicalDeviceProperties.Limits.MaxImageDimension2D / 1000;
+        score += Math.Min(textureDimensionScore, 20); // Cap at 20 points
+
+        return score;
     }
 
     private static Device CreateLogicalDevice(Vk vk, PhysicalDevice physicalDevice, QueueFamilyIndices indices, VulkanSurface surface, bool validationLayersEnabled)
@@ -261,32 +549,56 @@ internal unsafe sealed class VulkanDevices : IDisposable
         return logicalDevice;
     }
 
-    public void Dispose()
+    private static CommandPool CreateCommandPool(Vk vk, Device logicalDevice, uint queueFamilyIndex)
     {
-        Dispose(disposing: true);
-        GC.SuppressFinalize(this);
+        CommandPoolCreateInfo poolInfo = new()
+        {
+            SType = StructureType.CommandPoolCreateInfo,
+            Flags = CommandPoolCreateFlags.ResetCommandBufferBit, // Allow individual command buffer resets
+            QueueFamilyIndex = queueFamilyIndex
+        };
+
+        if (vk.CreateCommandPool(logicalDevice, in poolInfo, null, out CommandPool commandPool) != Result.Success)
+        {
+            throw new Exception($"Failed to create command pool for queue family {queueFamilyIndex}.");
+        }
+
+        return commandPool;
     }
 
-    internal void Dispose(bool disposing)
+    /// <inheritdoc/>
+    public void Dispose()
     {
-        if (!_isDisposed)
+        if (TransferCommandPool.HasValue)
         {
-            if (disposing)
-            {
-                _vk.DestroyDevice(LogicalDevice, null);
-            }
-
-            _isDisposed = true;
+            _vk.DestroyCommandPool(LogicalDevice, TransferCommandPool.Value, null);
         }
+
+        if (ComputeCommandPool.HasValue)
+        {
+            _vk.DestroyCommandPool(LogicalDevice, ComputeCommandPool.Value, null);
+        }
+
+        _vk.DestroyCommandPool(LogicalDevice, GraphicsCommandPool, null);
+
+        _vk.DestroyDevice(LogicalDevice, null);
     }
 }
 
 internal readonly struct QueueFamilyIndices
 {
-    // Update GetNumberOfQueueFamilies method if indices change.
-
     public required uint GraphicsIndex { get; init; }
     public required uint PresentIndex { get; init; }
     public uint? ComputeIndex { get; init; }
     public uint? TransferIndex { get; init; }
+}
+
+internal record PhysicalDeviceSpecs
+{
+    internal QueueFamilyIndices QueueFamilyIndices { get; init; }
+    internal PhysicalDeviceProperties PhysicalDeviceProperties { get; init; }
+    internal PhysicalDeviceMemoryProperties PhysicalDeviceMemoryProperties { get; init; }
+    internal SurfaceCapabilitiesKHR SurfaceCapabilities { get; init; }
+    internal SurfaceFormatKHR[] SurfaceFormats { get; init; } = [];
+    internal PresentModeKHR[] PresentModes { get; init; } = [];
 }

@@ -29,10 +29,11 @@ public class Engine : IDisposable
     public IWavePlayer WavePlayer { get; }
 
     private readonly IWindow _window;
-    private readonly IGraphicsDeviceInterface _graphicsDevice;
+    private readonly IRenderer _renderer;
     private readonly IPhysicalDeviceIO _physicalDeviceIO;
     private readonly ILogger<Engine> _logger;
     private readonly GameBase _game;
+    private readonly ICamera _camera; //TODO: Remove when scene management is added.
     private bool _isRunning = true;
     private bool _isSuspended = false;
     private bool _isDisposed = false;
@@ -48,10 +49,11 @@ public class Engine : IDisposable
         Ioc.Default.ConfigureServices(provider);
 
         _window = Ioc.Default.GetRequiredService<IWindow>();
-        _graphicsDevice = Ioc.Default.GetRequiredService<IGraphicsDeviceInterface>();
+        _renderer = Ioc.Default.GetRequiredService<IRenderer>();
         _physicalDeviceIO = Ioc.Default.GetRequiredService<IPhysicalDeviceIO>();
         _logger = Ioc.Default.GetRequiredService<ILogger<Engine>>();
         _game = game;
+        _camera = new DefaultCamera(_window, 70.0f * MathF.PI / 180.0f, 0.01f, 1000.0f);
 
         EventSystem = Ioc.Default.GetRequiredService<IEventSystem>();
         WavePlayer = Ioc.Default.GetRequiredService<IWavePlayer>();
@@ -60,6 +62,9 @@ public class Engine : IDisposable
         EventSystem.Subscribe<WindowRenderEventArgs>(OnRender);
         EventSystem.Subscribe<WindowResizeEventArgs>(OnResize);
         EventSystem.Subscribe<WindowCloseEventArgs>(OnWindowClosing);
+
+        // Temp manual test.
+        _renderer.RegisterSubRenderer(new ModelRenderer());
 
         _logger.LogDebug("Engine initialized.");
     }
@@ -82,8 +87,9 @@ public class Engine : IDisposable
     {
         if (_isRunning && !_isSuspended)
         {
-            WavePlayer.Update();
             _game.Update(e.DeltaTime);
+            _camera.Update();
+            WavePlayer.Update();
         }
     }
 
@@ -92,6 +98,7 @@ public class Engine : IDisposable
         if (_isRunning && !_isSuspended)
         {
             _game.Render(e.DeltaTime);
+            _renderer.Render(_camera);
         }
     }
 
@@ -126,7 +133,7 @@ public class Engine : IDisposable
                 _isRunning = false;
 
                 WavePlayer.Dispose();
-                _graphicsDevice.Dispose();
+                _renderer.Dispose();
                 _window.Dispose();
                 EventSystem.Dispose();
 

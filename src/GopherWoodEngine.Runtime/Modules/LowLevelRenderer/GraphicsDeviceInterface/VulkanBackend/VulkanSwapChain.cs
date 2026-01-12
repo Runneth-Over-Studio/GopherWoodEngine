@@ -33,15 +33,15 @@ internal unsafe sealed class VulkanSwapChain : IDisposable
     private readonly SurfaceFormatKHR _surfaceFormat;
     private bool _isDisposed = false;
 
-    public VulkanSwapChain(Vk vk, Instance instance, VulkanSurface surface, VulkanDevices devices, Vector2D<int> framebufferSize)
+    public VulkanSwapChain(VulkanAPI vulkanAPI, VulkanSurface surface, VulkanDevices devices, Vector2D<int> framebufferSize)
     {
-        _vk = vk;
+        _vk = vulkanAPI.Vk;
         _surface = surface;
         _devices = devices;
 
-        if (!vk.TryGetDeviceExtension(instance, devices.LogicalDevice, out KhrSwapchain khrSwapChain))
+        if (!_vk.TryGetDeviceExtension(vulkanAPI.Instance, devices.LogicalDevice, out KhrSwapchain khrSwapChain))
         {
-            throw new NotSupportedException("VK_KHR_swapchain extension not found.");
+            throw new NotSupportedException($"{KhrSwapchain.ExtensionName} extension not found.");
         }
         KhrSwapChain = khrSwapChain;
 
@@ -55,10 +55,10 @@ internal unsafe sealed class VulkanSwapChain : IDisposable
         }
 
         _surfaceFormat = ChooseSwapSurfaceFormat(swapChainSupport.Formats);
-        SwapChain = CreateSwapchain(vk, surface, devices, KhrSwapChain, swapChainSupport, Extent, _surfaceFormat, imageCount);
+        SwapChain = CreateSwapchain(_vk, surface, devices, KhrSwapChain, swapChainSupport, Extent, _surfaceFormat, imageCount);
         Images = CreateImages(_devices.LogicalDevice, ref imageCount, KhrSwapChain, SwapChain);
         ImageFormat = _surfaceFormat.Format;
-        ImageViews = CreateImageViews(vk, devices.LogicalDevice, Images, ImageFormat);
+        ImageViews = CreateImageViews(_vk, devices.LogicalDevice, Images, ImageFormat);
     }
 
     internal void CleanUpSwapChain()

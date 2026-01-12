@@ -5,9 +5,6 @@ namespace GopherWoodEngine.Runtime.Modules;
 /// <summary>
 /// Represents a graphics device that provides windowing abstractions and functionality for interfacing with the GPU.
 /// </summary>
-/// <remarks>
-/// Implements <see cref="IDisposable"/> to ensure proper cleanup of resources.
-/// </remarks>
 public interface IGraphicsDeviceInterface : IDisposable
 {
     /// <summary>

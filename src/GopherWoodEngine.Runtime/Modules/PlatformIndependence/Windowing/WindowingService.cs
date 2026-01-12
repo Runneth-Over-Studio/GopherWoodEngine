@@ -1,8 +1,10 @@
 ﻿using GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDeviceInterface.VulkanBackend;
 using Microsoft.Extensions.DependencyInjection;
+using Silk.NET.Core;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 using System;
+using Window = Silk.NET.Windowing.Window;
 
 namespace GopherWoodEngine.Runtime.Modules;
 
@@ -39,12 +41,23 @@ internal static class WindowingService
             }
         };
 
-        IWindow window = Silk.NET.Windowing.Window.Create(options);
+        IWindow window = Window.Create(options);
         window.Initialize();
 
         if (window.VkSurface is null)
         {
             throw new PlatformNotSupportedException("Windowing platform doesn't support Vulkan.");
+        }
+
+        window.Center();
+
+        if (engineConfig.WindowIcon is not null)
+        {
+            window.SetWindowIcon(new ReadOnlySpan<RawImage>([engineConfig.WindowIcon.Value]));
+        }
+        else
+        {
+            window.SetDefaultIcon();
         }
 
         HookWindowEvents(window, eventSystem);

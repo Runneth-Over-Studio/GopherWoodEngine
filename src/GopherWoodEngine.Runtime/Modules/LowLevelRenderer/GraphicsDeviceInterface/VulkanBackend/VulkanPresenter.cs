@@ -1,5 +1,6 @@
 ﻿using Silk.NET.Maths;
 using Silk.NET.Vulkan;
+using Silk.NET.Vulkan.Extensions.KHR;
 using Silk.NET.Windowing;
 using System;
 
@@ -13,24 +14,30 @@ internal unsafe sealed class VulkanPresenter : IDisposable
 
     private readonly IWindow _window;
     private readonly Vk _vk;
-    private readonly VulkanSurface _surface;
     private readonly VulkanSwapChain _swapChain;
     private readonly VulkanPipeline _pipeline;
     private readonly VulkanFrameContext _frameContext;
+    private readonly KhrPushDescriptor _pushDescriptor; //TODO: Just putting it here for now. Comes from Vulkano and will replace how descriptors are handled later.
     private int _currentFrame = 0;
     private bool _frameBufferResized = false;
     private bool _isDisposed = false;
 
     public VulkanPresenter(IWindow window, VulkanAPI vulkanAPI, VulkanSurface surface)
     {
-        Devices = new VulkanDevices(vulkanAPI, surface);
-
         _window = window;
         _vk = vulkanAPI.Vk;
-        _surface = surface;
-        _swapChain = new VulkanSwapChain(_vk, vulkanAPI.Instance, _surface, Devices, _window.FramebufferSize);
-        _pipeline = new VulkanPipeline(_vk, Devices.LogicalDevice, _swapChain);
-        _frameContext = new VulkanFrameContext(_vk, Devices, _swapChain, _pipeline, Devices.QueueFamilyIndices.GraphicsIndex);
+
+        Devices = new VulkanDevices(vulkanAPI, surface);
+
+        if (!_vk.TryGetDeviceExtension(vulkanAPI.Instance, Devices.LogicalDevice, out KhrPushDescriptor khrPushDescriptor))
+        {
+            throw new NotSupportedException($"{KhrPushDescriptor.ExtensionName} extension not found.");
+        }
+        _pushDescriptor = khrPushDescriptor;
+
+        //_swapChain = new VulkanSwapChain(vulkanAPI, surface, Devices, _window.FramebufferSize);
+        //_pipeline = new VulkanPipeline(_vk, Devices.LogicalDevice, _swapChain);
+        //_frameContext = new VulkanFrameContext(_vk, Devices, _swapChain, _pipeline, Devices.QueueFamilyIndices.GraphicsIndex);
 
         _window.FramebufferResize += OnFramebufferResize;
     }
@@ -99,6 +106,7 @@ internal unsafe sealed class VulkanPresenter : IDisposable
                 _frameContext.Dispose();
                 _pipeline.Dispose();
                 _swapChain.Dispose();
+                _pushDescriptor.Dispose();
                 Devices.Dispose();
             }
 

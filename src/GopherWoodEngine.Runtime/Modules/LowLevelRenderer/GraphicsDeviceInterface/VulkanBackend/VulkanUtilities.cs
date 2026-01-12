@@ -6,6 +6,36 @@ namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDeviceInterf
 
 internal static unsafe class VulkanUtilities
 {
+    internal static void AssertVk(Result result)
+    {
+        if (result != Result.Success)
+        {
+            throw new InvalidOperationException($"Vulkan call failed with result: {result}");
+        }
+    }
+
+    public static uint FindMemoryType(uint typeFilter, MemoryPropertyFlags properties, PhysicalDeviceMemoryProperties physicalDeviceMemoryProperties)
+    {
+        for (uint i = 0; i < physicalDeviceMemoryProperties.MemoryTypeCount; i++)
+        {
+            if (((typeFilter & (1 << (int)i)) != 0) && physicalDeviceMemoryProperties.MemoryTypes[(int)i].PropertyFlags.HasFlag(properties))
+            {
+                return i;
+            }
+        }
+
+        throw new InvalidOperationException("Failed to find suitable memory type.");
+    }
+
+
+
+
+
+
+
+
+
+
     internal static Buffer CreateBuffer(Vk vk, Device logicalDevice, ulong bufferSize, BufferUsageFlags usage)
     {
         BufferCreateInfo bufferInfo = new()

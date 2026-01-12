@@ -21,6 +21,7 @@ internal unsafe sealed class VulkanDebugger : IDisposable
     {
         _instance = vulkanAPI.Instance;
         _utils = GetExtDebugUtils(_instance, vulkanAPI.Vk);
+
         Messenger = CreateDebugMessenger(_utils, _instance, logger);
     }
 

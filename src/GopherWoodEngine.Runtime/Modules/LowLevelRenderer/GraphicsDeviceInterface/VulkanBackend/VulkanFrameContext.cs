@@ -16,7 +16,6 @@ internal unsafe sealed class VulkanFrameContext : IDisposable
     private readonly VulkanDevices _devices;
     private readonly VulkanSwapChain _swapChain;
     private readonly VulkanPipeline _pipeline;
-    private readonly CommandPool _commandPool;
     private readonly Vertex[] _vertices;
     private readonly ushort[] _indices;
     private readonly Buffer _vertexBuffer;
@@ -43,7 +42,6 @@ internal unsafe sealed class VulkanFrameContext : IDisposable
         _pipeline = pipeline;
 
         _framebuffers = CreateFramebuffers(vk, devices.LogicalDevice, swapChain, pipeline.RenderPass);
-        _commandPool = CreateCommandPool(vk, devices.LogicalDevice, queueFamilyGraphicsIndex);
 
         _vertices =
         [
@@ -154,7 +152,7 @@ internal unsafe sealed class VulkanFrameContext : IDisposable
 
         fixed (CommandBuffer* commandBuffersPtr = _commandBuffers)
         {
-            _vk.FreeCommandBuffers(_devices.LogicalDevice, _commandPool, (uint)_commandBuffers.Length, commandBuffersPtr);
+            _vk.FreeCommandBuffers(_devices.LogicalDevice, _devices.GraphicsCommandPool, (uint)_commandBuffers.Length, commandBuffersPtr);
         }
     }
 
@@ -215,7 +213,7 @@ internal unsafe sealed class VulkanFrameContext : IDisposable
         CommandBufferAllocateInfo allocInfo = new()
         {
             SType = StructureType.CommandBufferAllocateInfo,
-            CommandPool = _commandPool,
+            CommandPool = _devices.GraphicsCommandPool,
             Level = CommandBufferLevel.Primary,
             CommandBufferCount = (uint)commandBuffers.Length
         };
@@ -320,7 +318,7 @@ internal unsafe sealed class VulkanFrameContext : IDisposable
         Buffer buffer = VulkanUtilities.CreateBuffer(_vk, _devices.LogicalDevice, bufferSize, usage);
         DeviceMemory bufferMemory = VulkanUtilities.CreateMemory(_vk, _devices, buffer, MemoryPropertyFlags.DeviceLocalBit);
 
-        CopyBuffer(_vk, _devices, _commandPool, stagingBuffer, buffer, bufferSize);
+        CopyBuffer(_vk, _devices, _devices.GraphicsCommandPool, stagingBuffer, buffer, bufferSize);
 
         _vk.DestroyBuffer(_devices.LogicalDevice, stagingBuffer, null);
         _vk.FreeMemory(_devices.LogicalDevice, stagingBufferMemory, null);
@@ -463,22 +461,6 @@ internal unsafe sealed class VulkanFrameContext : IDisposable
         return framebuffers;
     }
 
-    private static CommandPool CreateCommandPool(Vk vk, Device logicalDevice, uint queueFamilyGraphicsIndex)
-    {
-        CommandPoolCreateInfo poolInfo = new()
-        {
-            SType = StructureType.CommandPoolCreateInfo,
-            QueueFamilyIndex = queueFamilyGraphicsIndex
-        };
-
-        if (vk.CreateCommandPool(logicalDevice, in poolInfo, null, out CommandPool commandPool) != Result.Success)
-        {
-            throw new Exception("Failed to create command pool.");
-        }
-
-        return commandPool;
-    }
-
     public void Dispose()
     {
         Dispose(disposing: true);
@@ -498,10 +480,8 @@ internal unsafe sealed class VulkanFrameContext : IDisposable
 
                 fixed (CommandBuffer* commandBuffersPtr = _commandBuffers)
                 {
-                    _vk.FreeCommandBuffers(_devices.LogicalDevice, _commandPool, (uint)_commandBuffers.Length, commandBuffersPtr);
+                    _vk.FreeCommandBuffers(_devices.LogicalDevice, _devices.GraphicsCommandPool, (uint)_commandBuffers.Length, commandBuffersPtr);
                 }
-
-                _vk.DestroyCommandPool(_devices.LogicalDevice, _commandPool, null);
 
                 _vk.DestroyDescriptorPool(_devices.LogicalDevice, _descriptorPool, null);
 

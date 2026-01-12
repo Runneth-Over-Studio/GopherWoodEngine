@@ -17,7 +17,9 @@ internal static class ModuleStartUp
         services.AddSingleton<IEventSystem, EventSystem>();
 
         // Low-Level Renderer
-        services.AddSingleton<IGraphicsDeviceInterface>(sp => ActivatorUtilities.CreateInstance<VulkanGraphicsDeviceInterface>(sp, engineConfig));
+        services.AddSingleton<VulkanGraphicsDeviceInterface>(sp => ActivatorUtilities.CreateInstance<VulkanGraphicsDeviceInterface>(sp, engineConfig));
+        services.AddSingleton<IGraphicsDeviceInterface>(sp => sp.GetRequiredService<VulkanGraphicsDeviceInterface>());
+        services.AddSingleton<IRenderer, VulkanRenderer>();
 
         // Human Interface Device
         services.AddSingleton<IPhysicalDeviceIO, PhysicalDeviceIO>();
