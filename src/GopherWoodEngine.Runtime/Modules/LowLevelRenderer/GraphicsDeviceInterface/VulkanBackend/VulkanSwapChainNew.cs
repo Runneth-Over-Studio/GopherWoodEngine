@@ -501,6 +501,7 @@ internal sealed class VulkanSwapChainNew : IDisposable
 
         PresentInfoKHR presentInfo = new()
         {
+            SType = StructureType.PresentInfoKhr,
             WaitSemaphoreCount = 1,
             PWaitSemaphores = &waitSemaphore,
             SwapchainCount = 1,

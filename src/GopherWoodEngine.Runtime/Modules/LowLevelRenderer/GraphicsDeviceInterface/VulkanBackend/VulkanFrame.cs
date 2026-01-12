@@ -118,6 +118,7 @@ internal sealed class VulkanFrame : IDisposable
 
         SubmitInfo submitInfo = new()
         {
+            SType = StructureType.SubmitInfo,
             WaitSemaphoreCount = 1,
             PWaitSemaphores = waitSemaphores,
             PWaitDstStageMask = waitStages,

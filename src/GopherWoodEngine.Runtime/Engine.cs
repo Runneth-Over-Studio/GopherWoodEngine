@@ -64,7 +64,7 @@ public class Engine : IDisposable
         EventSystem.Subscribe<WindowCloseEventArgs>(OnWindowClosing);
 
         // Temp manual test.
-        _renderer.RegisterSubRenderer(new ModelRenderer());
+        //_renderer.RegisterSubRenderer(new ModelRenderer());
 
         _logger.LogDebug("Engine initialized.");
     }

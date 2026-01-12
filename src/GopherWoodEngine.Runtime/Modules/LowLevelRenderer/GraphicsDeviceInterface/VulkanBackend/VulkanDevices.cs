@@ -162,6 +162,7 @@ internal unsafe sealed class VulkanDevices : IDisposable
 
         CommandBufferBeginInfo beginInfo = new()
         {
+            SType = StructureType.CommandBufferBeginInfo,
             Flags = CommandBufferUsageFlags.OneTimeSubmitBit
         };
 
@@ -192,6 +193,7 @@ internal unsafe sealed class VulkanDevices : IDisposable
 
         SubmitInfo submitInfo = new()
         {
+            SType = StructureType.SubmitInfo,
             CommandBufferCount = 1,
             PCommandBuffers = &commandBuffer
         };
