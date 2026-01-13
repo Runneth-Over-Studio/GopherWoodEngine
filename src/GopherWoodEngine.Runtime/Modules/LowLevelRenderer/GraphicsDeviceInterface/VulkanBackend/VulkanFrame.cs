@@ -24,7 +24,6 @@ internal sealed class VulkanFrame : IDisposable
     private readonly VulkanSwapChainNew _swapChain;
     private readonly CommandBuffer _commandBuffer;
     private readonly Semaphore _imageAvailableSemaphore;
-    private readonly Semaphore _renderFinishedSemaphore;
     private readonly Fence _inFlightFence;
 
     /// <summary>
@@ -37,9 +36,9 @@ internal sealed class VulkanFrame : IDisposable
         _swapChain = swapChain;
         _commandBuffer = commandBuffer;
 
-        (Semaphore imageAvailableSemaphore, Semaphore renderFinishedSemaphore, Fence inFlightFence) = CreateSyncObjects(_vk, _devices.LogicalDevice);
+        // Only create image available semaphore and fence - renderFinished is per-image in swapchain
+        (Semaphore imageAvailableSemaphore, Fence inFlightFence) = CreateSyncObjects(_vk, _devices.LogicalDevice);
         _imageAvailableSemaphore = imageAvailableSemaphore;
-        _renderFinishedSemaphore = renderFinishedSemaphore;
         _inFlightFence = inFlightFence;
     }
 
@@ -117,7 +116,11 @@ internal sealed class VulkanFrame : IDisposable
         }
 
         Semaphore* waitSemaphores = stackalloc Semaphore[1] { _imageAvailableSemaphore };
-        Semaphore* signalSemaphores = stackalloc Semaphore[1] { _renderFinishedSemaphore };
+        
+        // Get the render finished semaphore for the current swapchain image
+        Semaphore renderFinishedSemaphore = _swapChain.GetRenderFinishedSemaphore();
+        Semaphore* signalSemaphores = stackalloc Semaphore[1] { renderFinishedSemaphore };
+        
         PipelineStageFlags* waitStages = stackalloc PipelineStageFlags[1] { PipelineStageFlags.ColorAttachmentOutputBit };
 
         SubmitInfo submitInfo = new()
@@ -142,29 +145,27 @@ internal sealed class VulkanFrame : IDisposable
             throw new InvalidOperationException($"Failed to submit draw command buffer. Result: {r}");
         }
 
-        _swapChain.PresentImage(_renderFinishedSemaphore);
+        _swapChain.PresentImage(renderFinishedSemaphore);
     }
 
-    private static unsafe (Semaphore imageAvailableSemaphore, Semaphore renderFinishedSemaphore, Fence inFlightFence) CreateSyncObjects(Vk vk, Device logicalDevice)
+    private static unsafe (Semaphore imageAvailableSemaphore, Fence inFlightFence) CreateSyncObjects(Vk vk, Device logicalDevice)
     {
         var semaphoreCreateInfo = new SemaphoreCreateInfo(sType: StructureType.SemaphoreCreateInfo);
         var fenceInfo = new FenceCreateInfo(flags: FenceCreateFlags.SignaledBit);
 
         if ((vk.CreateSemaphore(logicalDevice, in semaphoreCreateInfo, null, out Semaphore availableSemaphore) != Result.Success) ||
-            (vk.CreateSemaphore(logicalDevice, in semaphoreCreateInfo, null, out Semaphore finishedSemaphore) != Result.Success) ||
             (vk.CreateFence(logicalDevice, in fenceInfo, null, out Fence flightFence) != Result.Success))
         {
             throw new InvalidOperationException("Failed to create synchronisation objects.");
         }
 
-        return (availableSemaphore, finishedSemaphore, flightFence);
+        return (availableSemaphore, flightFence);
     }
 
     /// <inheritdoc/>
     public unsafe void Dispose()
     {
         _vk.DestroySemaphore(_devices.LogicalDevice, _imageAvailableSemaphore, null);
-        _vk.DestroySemaphore(_devices.LogicalDevice, _renderFinishedSemaphore, null);
         _vk.DestroyFence(_devices.LogicalDevice, _inFlightFence, null);
     }
 }

@@ -7,7 +7,7 @@ internal class DefaultCamera : ICamera
 {
     public Vector3 Facing { get; set; } = new Vector3(0.0f, 0.0f, -1.0f);
 
-    public Vector3 Position { get; set; } = new Vector3(0.0f, 0.0f, 0.0f);
+    public Vector3 Position { get; set; } = new Vector3(0.0f, 0.0f, 3.0f);
 
     public Matrix4x4 ViewMatrix { get; set; } = default;
 

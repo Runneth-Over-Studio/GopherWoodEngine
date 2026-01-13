@@ -36,6 +36,9 @@ internal sealed class VulkanSwapChainNew : IDisposable
     // Per-image synchronization tracking to avoid semaphore reuse errors
     private Fence?[] _imagesInFlight;
 
+    // Add per-image semaphores for render completion
+    private Semaphore[] _renderFinishedSemaphores;
+
     public VulkanSwapChainNew(IWindow window, VulkanAPI vulkanAPI, VulkanSurface surface, VulkanDevices devices)
     {
         _window = window;
@@ -53,6 +56,9 @@ internal sealed class VulkanSwapChainNew : IDisposable
 
         // Initialize per-image fence tracking (initially all null - no frames using images)
         _imagesInFlight = new Fence?[_swapchainImages.Length];
+        
+        // Initialize per-image render finished semaphores
+        _renderFinishedSemaphores = CreateRenderFinishedSemaphores(_swapchainImages.Length);
 
         RenderPass = CreateRenderPass();
 
@@ -377,6 +383,25 @@ internal sealed class VulkanSwapChainNew : IDisposable
         return framebuffers;
     }
 
+    private unsafe Semaphore[] CreateRenderFinishedSemaphores(int count)
+    {
+        Semaphore[] semaphores = new Semaphore[count];
+        SemaphoreCreateInfo semaphoreInfo = new()
+        {
+            SType = StructureType.SemaphoreCreateInfo
+        };
+
+        for (int i = 0; i < count; i++)
+        {
+            if (_vk.CreateSemaphore(_devices.LogicalDevice, in semaphoreInfo, null, out semaphores[i]) != Result.Success)
+            {
+                throw new InvalidOperationException("Failed to create render finished semaphore.");
+            }
+        }
+
+        return semaphores;
+    }
+
     private static unsafe CommandBuffer[] AllocateCommandBuffers(uint count, Vk vk, VulkanDevices devices)
     {
         CommandBuffer[] commandBuffers = new CommandBuffer[count];
@@ -430,6 +455,12 @@ internal sealed class VulkanSwapChainNew : IDisposable
             return;
         }
 
+        // Clean up old semaphores
+        foreach (Semaphore semaphore in _renderFinishedSemaphores)
+        {
+            _vk.DestroySemaphore(_devices.LogicalDevice, semaphore, null);
+        }
+
         CleanUpSwapchain();
 
         Handle = CreateSwapchain(out _swapchainImages);
@@ -439,6 +470,9 @@ internal sealed class VulkanSwapChainNew : IDisposable
 
         // Reset per-image fence tracking after swapchain recreation
         _imagesInFlight = new Fence?[_swapchainImages.Length];
+        
+        // Recreate per-image semaphores
+        _renderFinishedSemaphores = CreateRenderFinishedSemaphores(_swapchainImages.Length);
     }
 
     public VulkanFrame GetNextFrame()
@@ -524,6 +558,11 @@ internal sealed class VulkanSwapChainNew : IDisposable
         _imagesInFlight[_swapchainImageIndex] = inFlightFence;
     }
 
+    public Semaphore GetRenderFinishedSemaphore()
+    {
+        return _renderFinishedSemaphores[_swapchainImageIndex];
+    }
+
     public unsafe void PresentImage(Semaphore waitSemaphore)
     {
         SwapchainKHR* swapchains = stackalloc SwapchainKHR[1] { Handle };
@@ -557,6 +596,12 @@ internal sealed class VulkanSwapChainNew : IDisposable
         foreach (VulkanFrame frame in Frames)
         {
             frame.Dispose();
+        }
+
+        // Clean up per-image semaphores
+        foreach (Semaphore semaphore in _renderFinishedSemaphores)
+        {
+            _vk.DestroySemaphore(_devices.LogicalDevice, semaphore, null);
         }
 
         CleanUpSwapchain();
