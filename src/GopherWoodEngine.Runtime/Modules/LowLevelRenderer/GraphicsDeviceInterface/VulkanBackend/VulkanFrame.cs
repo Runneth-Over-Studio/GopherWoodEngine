@@ -69,6 +69,10 @@ internal sealed class VulkanFrame : IDisposable
             return null;
         }
 
+        // Register that this frame's fence is now using the acquired swapchain image
+        // This prevents semaphore reuse errors by tracking which frame is using which image
+        _swapChain.RegisterImageUsage(_inFlightFence);
+
         if (_vk.ResetFences(_devices.LogicalDevice, 1, in _inFlightFence) != Result.Success)
         {
             throw new InvalidOperationException("Failed to reset fences.");

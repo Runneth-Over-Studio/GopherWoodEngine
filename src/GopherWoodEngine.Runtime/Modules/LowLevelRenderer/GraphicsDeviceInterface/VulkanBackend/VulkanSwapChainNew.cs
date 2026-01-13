@@ -33,6 +33,9 @@ internal sealed class VulkanSwapChainNew : IDisposable
     private uint _swapchainImageIndex;
     private bool _resized = false;
 
+    // Per-image synchronization tracking to avoid semaphore reuse errors
+    private Fence?[] _imagesInFlight;
+
     public VulkanSwapChainNew(IWindow window, VulkanAPI vulkanAPI, VulkanSurface surface, VulkanDevices devices)
     {
         _window = window;
@@ -47,6 +50,9 @@ internal sealed class VulkanSwapChainNew : IDisposable
         Handle = CreateSwapchain(out _swapchainImages);
         _imageViews = CreateSwapchainImageViews();
         _depthImages = CreateDepthImages();
+
+        // Initialize per-image fence tracking (initially all null - no frames using images)
+        _imagesInFlight = new Fence?[_swapchainImages.Length];
 
         RenderPass = CreateRenderPass();
 
@@ -430,6 +436,9 @@ internal sealed class VulkanSwapChainNew : IDisposable
         _imageViews = CreateSwapchainImageViews();
         _depthImages = CreateDepthImages();
         _framebuffers = CreateFramebuffers();
+
+        // Reset per-image fence tracking after swapchain recreation
+        _imagesInFlight = new Fence?[_swapchainImages.Length];
     }
 
     public VulkanFrame GetNextFrame()
@@ -496,6 +505,23 @@ internal sealed class VulkanSwapChainNew : IDisposable
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Registers that a specific fence is now using the acquired swapchain image.
+    /// Must be called after AcquireNextImage and before submitting commands.
+    /// </summary>
+    internal unsafe void RegisterImageUsage(Fence inFlightFence)
+    {
+        // If this image is currently in use by another frame, wait for it
+        if (_imagesInFlight[_swapchainImageIndex].HasValue)
+        {
+            Fence imageInUseFence = _imagesInFlight[_swapchainImageIndex].Value;
+            _vk.WaitForFences(_devices.LogicalDevice, 1, in imageInUseFence, true, ulong.MaxValue);
+        }
+
+        // Mark this image as now being used by the current frame
+        _imagesInFlight[_swapchainImageIndex] = inFlightFence;
     }
 
     public unsafe void PresentImage(Semaphore waitSemaphore)

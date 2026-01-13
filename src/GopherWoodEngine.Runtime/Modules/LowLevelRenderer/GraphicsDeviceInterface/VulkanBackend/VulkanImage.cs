@@ -246,6 +246,7 @@ internal sealed class VulkanImage : IDisposable
 
         ImageMemoryBarrier barrier = new()
         {
+            SType = StructureType.ImageMemoryBarrier,
             OldLayout = _layout,
             NewLayout = newLayout,
             SrcQueueFamilyIndex = Vk.QueueFamilyIgnored,
