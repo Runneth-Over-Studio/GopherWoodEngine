@@ -157,6 +157,7 @@ internal sealed class VulkanImage : IDisposable
     {
         SamplerCreateInfo samplerInfo = new()
         {
+            SType = StructureType.SamplerCreateInfo,
             MagFilter = filter,
             MinFilter = filter,
             AddressModeU = SamplerAddressMode.Repeat,
@@ -320,6 +321,7 @@ internal sealed class VulkanImage : IDisposable
     {
         ImageCreateInfo imageInfo = new()
         {
+            SType = StructureType.ImageCreateInfo,
             ImageType = ImageType.Type2D,
             MipLevels = 1,
             ArrayLayers = 1,
@@ -347,6 +349,7 @@ internal sealed class VulkanImage : IDisposable
 
         MemoryAllocateInfo allocInfo = new()
         {
+            SType = StructureType.MemoryAllocateInfo,
             AllocationSize = memRequirements.Size,
             MemoryTypeIndex = VulkanUtilities.FindMemoryType(
                 memRequirements.MemoryTypeBits,
@@ -368,6 +371,7 @@ internal sealed class VulkanImage : IDisposable
     {
         ImageViewCreateInfo viewInfo = new()
         {
+            SType = StructureType.ImageViewCreateInfo,
             Image = _image,
             ViewType = ImageViewType.Type2D,
             Format = Format,

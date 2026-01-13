@@ -63,9 +63,6 @@ public class Engine : IDisposable
         EventSystem.Subscribe<WindowResizeEventArgs>(OnResize);
         EventSystem.Subscribe<WindowCloseEventArgs>(OnWindowClosing);
 
-        // Temp manual test.
-        //_renderer.RegisterSubRenderer(new ModelRenderer());
-
         _logger.LogDebug("Engine initialized.");
     }
 
@@ -98,7 +95,7 @@ public class Engine : IDisposable
         if (_isRunning && !_isSuspended)
         {
             _game.Render(e.DeltaTime);
-            _renderer.Render(_camera);
+            _renderer.Render(_camera, _game.RenderContext);
         }
     }
 

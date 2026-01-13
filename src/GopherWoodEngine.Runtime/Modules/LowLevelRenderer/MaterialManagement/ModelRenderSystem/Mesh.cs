@@ -2,7 +2,7 @@
 using Silk.NET.Vulkan;
 using System;
 
-namespace GopherWoodEngine.Runtime.Modules;
+namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.MaterialManagement.ModelRenderSystem;
 
 internal class Mesh : IDisposable
 {

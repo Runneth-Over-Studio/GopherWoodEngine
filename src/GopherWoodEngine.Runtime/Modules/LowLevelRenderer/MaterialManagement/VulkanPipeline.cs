@@ -82,6 +82,7 @@ internal abstract class VulkanPipeline : IDisposable
     {
         ShaderModuleCreateInfo createInfo = new()
         {
+            SType = StructureType.ShaderModuleCreateInfo,
             CodeSize = (uint)shaderCode.Length
         };
 
@@ -170,6 +171,7 @@ internal abstract class VulkanPipeline : IDisposable
 
         DescriptorSetLayoutCreateInfo createInfo = new()
         {
+            SType = StructureType.DescriptorSetLayoutCreateInfo,
             Flags = pushDescriptor ? DescriptorSetLayoutCreateFlags.PushDescriptorBitKhr : 0,
             BindingCount = (uint)bindings.Length
         };
@@ -195,14 +197,16 @@ internal abstract class VulkanPipeline : IDisposable
             DynamicState.Scissor
         };
 
-        PipelineDynamicStateCreateInfo dynamicState = new()
+        PipelineDynamicStateCreateInfo dynamicStateInfo = new()
         {
+            SType = StructureType.PipelineDynamicStateCreateInfo,
             DynamicStateCount = 2,
             PDynamicStates = dynamicStates
         };
 
         PipelineVertexInputStateCreateInfo vertexInputInfo = new()
         {
+            SType = StructureType.PipelineVertexInputStateCreateInfo,
             VertexAttributeDescriptionCount = 0
         };
 
@@ -282,6 +286,7 @@ internal abstract class VulkanPipeline : IDisposable
 
         GraphicsPipelineCreateInfo pipelineCreateInfo = new()
         {
+            SType = StructureType.GraphicsPipelineCreateInfo,
             PVertexInputState = &vertexInputInfo,
             PInputAssemblyState = &inputAssembly,
             PViewportState = &viewportState,
@@ -289,7 +294,7 @@ internal abstract class VulkanPipeline : IDisposable
             PMultisampleState = &multisampling,
             PDepthStencilState = (DepthTest || StencilTest) ? &depthStencil : null,
             PColorBlendState = &colourBlending,
-            PDynamicState = &dynamicState,
+            PDynamicState = &dynamicStateInfo,
             PTessellationState = tesselationState.HasValue ? &tessPtrSrc : null,
             Layout = _pipelineLayout,
             RenderPass = _renderPass,

@@ -125,6 +125,7 @@ internal unsafe sealed class VulkanDevices : IDisposable
 
         CommandBufferAllocateInfo allocateInfo = new()
         {
+            SType = StructureType.CommandBufferAllocateInfo,
             CommandPool = commandPool,
             Level = CommandBufferLevel.Primary,
             CommandBufferCount = count

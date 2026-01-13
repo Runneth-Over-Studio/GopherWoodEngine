@@ -1,4 +1,5 @@
-﻿using Silk.NET.Vulkan;
+﻿using GopherWoodEngine.Runtime.Modules.Rendering;
+using Silk.NET.Vulkan;
 using System.Collections.Generic;
 
 namespace GopherWoodEngine.Runtime.Modules;
@@ -32,7 +33,7 @@ internal class ModelRenderer : ISubRenderer
         transforms.Add(transform);
     }
 
-    public void Render(ICamera camera, CommandBuffer cmd)
+    public void Render(ICamera camera, CommandBuffer cmd, IRenderable renderable)
     {
         Pipeline.Bind(cmd);
 

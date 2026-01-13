@@ -38,7 +38,7 @@ public class Program
 
     private static void RegisterServices(IServiceCollection services)
     {
-        // Auto-register all ViewModels by convention
+        // Auto-register all ViewModels by convention.
         IEnumerable<Type> viewModelTypes = Assembly.GetExecutingAssembly()
             .GetTypes()
             .Where(t => t.IsClass && !t.IsAbstract && t.Name.EndsWith("ViewModel"));

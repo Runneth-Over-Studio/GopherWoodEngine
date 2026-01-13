@@ -30,7 +30,7 @@ public partial class VulkanTestsViewModel : BaseViewModel
             Height = 720
         };
 
-        using TestBedGame game = new(SelectedTest, engineConfig);
+        using TestGameGraphics game = new(SelectedTest, engineConfig);
         game.Start();
     }
 }

@@ -1,5 +1,4 @@
-﻿using Silk.NET.OpenAL;
-using Silk.NET.Vulkan;
+﻿using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 using Silk.NET.Windowing;
 using System;
@@ -152,6 +151,7 @@ internal sealed class VulkanSwapChainNew : IDisposable
 
         SwapchainCreateInfoKHR createInfo = new()
         {
+            SType = StructureType.SwapchainCreateInfoKhr,
             Surface = _surface.SurfaceKHR,
             MinImageCount = imageCount,
             ImageFormat = SurfaceFormat.Format,
@@ -202,6 +202,7 @@ internal sealed class VulkanSwapChainNew : IDisposable
         {
             ImageViewCreateInfo createInfo = new()
             {
+                SType = StructureType.ImageViewCreateInfo,
                 Image = _swapchainImages[i],
                 ViewType = ImageViewType.Type2D,
                 Format = ImageFormat,
@@ -324,6 +325,7 @@ internal sealed class VulkanSwapChainNew : IDisposable
 
         RenderPassCreateInfo renderPassCreateInfo = new()
         {
+            SType = StructureType.RenderPassCreateInfo,
             AttachmentCount = 2,
             PAttachments = attachments,
             SubpassCount = 1,
@@ -351,6 +353,7 @@ internal sealed class VulkanSwapChainNew : IDisposable
 
             FramebufferCreateInfo framebufferCreateInfo = new()
             {
+                SType = StructureType.FramebufferCreateInfo,
                 RenderPass = RenderPass,
                 AttachmentCount = 2,
                 PAttachments = attachments,
@@ -374,6 +377,7 @@ internal sealed class VulkanSwapChainNew : IDisposable
 
         CommandBufferAllocateInfo allocateInfo = new()
         {
+            SType = StructureType.CommandBufferAllocateInfo,
             CommandPool = devices.GraphicsCommandPool,
             Level = CommandBufferLevel.Primary,
             CommandBufferCount = count

@@ -30,7 +30,7 @@ public partial class OpenALTestsViewModel : BaseViewModel
             Height = 720
         };
 
-        using TestBedGame game = new(SelectedTest, engineConfig);
+        using TestGameAudio game = new(SelectedTest, engineConfig);
         game.Start();
     }
 }

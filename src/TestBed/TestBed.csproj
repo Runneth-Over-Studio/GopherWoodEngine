@@ -30,4 +30,8 @@
     <ProjectReference Include="..\GopherWoodEngine.Runtime\GopherWoodEngine.Runtime.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Base\Assets\Models\" />
+  </ItemGroup>
+
 </Project>

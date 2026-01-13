@@ -4,7 +4,7 @@ using System.IO;
 
 namespace TestBed;
 
-internal class TestBedGame(string selectedTest, EngineConfig engineConfig) : GameBase(engineConfig)
+internal class TestGameAudio(string selectedTest, EngineConfig engineConfig) : GameBase(engineConfig)
 {
     private readonly string _selectedTest = selectedTest;
     private readonly string _assetsPath = Path.Combine(AppContext.BaseDirectory, "Base", "Assets");

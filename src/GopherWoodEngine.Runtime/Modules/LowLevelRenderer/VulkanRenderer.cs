@@ -1,6 +1,9 @@
 ﻿using GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDeviceInterface.VulkanBackend;
+using GopherWoodEngine.Runtime.Modules.Rendering;
 using Silk.NET.Vulkan;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace GopherWoodEngine.Runtime.Modules;
 
@@ -22,8 +25,7 @@ namespace GopherWoodEngine.Runtime.Modules;
 public sealed class VulkanRenderer : IRenderer
 {
     private readonly VulkanGraphicsDeviceInterface _vkInterface;
-    private readonly List<ISubRenderer> _subRenderers = [];
-    private bool _subRenderersNeedsSort = false;
+    private readonly Dictionary<Type, ISubRenderer> _subRenderersByType = [];
 
     /// <summary>
     /// Initializes a new instance of the <see cref="VulkanRenderer"/> class.
@@ -36,38 +38,19 @@ public sealed class VulkanRenderer : IRenderer
     public VulkanRenderer(VulkanGraphicsDeviceInterface vkInterface)
     {
         _vkInterface = vkInterface;
+
+        // Register sub-renderers for different renderable types
+        RegisterSubRenderer(typeof(Mesh), new VulkanMeshSubRenderer(_vkInterface));
+        //RegisterSubRenderer(typeof(Sprite), new VulkanSpriteSubRenderer(_vkInterface));
     }
 
-    /// <inheritdoc/>
-    /// <remarks>
-    /// If a sub-renderer with the same instance is already registered, this method does nothing.
-    /// Sub-renderers are executed in order of their <see cref="ISubRenderer.RenderOrder"/> priority.
-    /// </remarks>
-    public void RegisterSubRenderer(ISubRenderer renderer)
+    private void RegisterSubRenderer(Type renderableType, ISubRenderer subRenderer)
     {
-        if (_subRenderers.Contains(renderer))
-        {
-            return;
-        }
-
-        _subRenderers.Add(renderer);
-        _subRenderersNeedsSort = true;
+        _subRenderersByType[renderableType] = subRenderer;
     }
 
     /// <inheritdoc/>
-    public bool UnregisterSubRenderer(ISubRenderer renderer)
-    {
-        return _subRenderers.Remove(renderer);
-    }
-
-    /// <inheritdoc/>
-    public void ClearSubRenderers()
-    {
-        _subRenderers.Clear();
-    }
-
-    /// <inheritdoc/>
-    public void Render(ICamera camera)
+    public void Render(ICamera camera, RenderContext renderContext)
     {
         VulkanFrame frame = _vkInterface.SwapChain.GetNextFrame();
         CommandBuffer? cmd = frame.Begin();
@@ -80,31 +63,48 @@ public sealed class VulkanRenderer : IRenderer
 
         _vkInterface.SwapChain.BeginRenderPass(cmd.Value);
 
-        ExecuteSubRenderers(camera, cmd.Value);
+        ExecuteSubRenderers(camera, renderContext, cmd.Value);
 
         _vkInterface.SwapChain.EndRenderPass(cmd.Value);
-
         frame.End();
+        renderContext.Clear();
     }
 
-    private void ExecuteSubRenderers(ICamera camera, CommandBuffer commandBuffer)
+    private void ExecuteSubRenderers(ICamera camera, RenderContext renderContext, CommandBuffer cmd)
     {
-        if (_subRenderersNeedsSort)
-        {
-            _subRenderers.Sort((a, b) => a.RenderOrder.CompareTo(b.RenderOrder));
-            _subRenderersNeedsSort = false;
-        }
+        var sortedGroups = renderContext.GetRenderables()
+            .GroupBy(r => r.RenderLayer)
+            .OrderBy(g => g.Key);
 
-        foreach (ISubRenderer renderer in _subRenderers)
+        foreach (var layerGroup in sortedGroups)
         {
-            renderer.Render(camera, commandBuffer);
+            var typeGroups = layerGroup.GroupBy(r => r.GetType());
+
+            foreach (var typeGroup in typeGroups)
+            {
+                if (_subRenderersByType.TryGetValue(typeGroup.Key, out ISubRenderer? subRenderer))
+                {
+                    foreach (IRenderable renderable in typeGroup)
+                    {
+                        subRenderer.Render(camera, cmd, renderable);
+                    }
+                }
+            }
         }
     }
 
     /// <inheritdoc/>
     public void Dispose()
     {
-        _subRenderers.Clear();
+        foreach (ISubRenderer renderer in _subRenderersByType.Values)
+        {
+            if (renderer is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+        }
+
+        _subRenderersByType.Clear();
         _vkInterface.Dispose();
     }
 }

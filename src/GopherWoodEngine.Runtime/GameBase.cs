@@ -1,4 +1,5 @@
-﻿using System;
+﻿using GopherWoodEngine.Runtime.Modules.Rendering;
+using System;
 
 namespace GopherWoodEngine.Runtime;
 
@@ -23,6 +24,11 @@ public abstract class GameBase : IDisposable
     /// </summary>
     public Engine Engine { get; private set; }
 
+    /// <summary>
+    /// Gets the render context for submitting renderables to be drawn.
+    /// </summary>
+    public RenderContext RenderContext { get; } //TODO: This probably wouldn't be public. Might pass to Engine or move property to engine and let it own it. Probably will change anyways when scenes and worlds are added.
+
     private bool _isDisposed = false;
 
     /// <summary>
@@ -32,6 +38,8 @@ public abstract class GameBase : IDisposable
     {
         EngineConfig = engineConfig;
         Engine = new Engine(this);
+
+        RenderContext = new RenderContext();
     }
 
     /// <summary>
@@ -65,11 +73,20 @@ public abstract class GameBase : IDisposable
     public virtual void Update(double deltaTime) { }
 
     /// <summary>
-    /// Render the current frame.
+    /// Render the current frame by submitting renderables to the RenderContext.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Implementations may use <paramref name="deltaTime"/> to calculate animations, 
     /// transitions, or other time-dependent effects.
+    /// </para>
+    /// <para>
+    /// Override this to submit your game objects for rendering. Example:
+    /// <code>
+    /// RenderContext.Submit(mySprite);
+    /// RenderContext.Submit(myMesh);
+    /// </code>
+    /// </para>
     /// </remarks>
     public virtual void Render(double deltaTime) { }
 

@@ -416,6 +416,7 @@ internal unsafe sealed class VulkanBuffer<T> : IDisposable where T : unmanaged
     {
         BufferCreateInfo bufferInfo = new()
         {
+            SType = StructureType.BufferCreateInfo,
             Size = _size,
             Usage = usage,
             SharingMode = SharingMode.Exclusive
@@ -430,6 +431,7 @@ internal unsafe sealed class VulkanBuffer<T> : IDisposable where T : unmanaged
 
         MemoryAllocateInfo allocateInfo = new()
         {
+            SType = StructureType.MemoryAllocateInfo,
             AllocationSize = memRequirements.Size,
             MemoryTypeIndex = VulkanUtilities.FindMemoryType(memRequirements.MemoryTypeBits, properties, _devices.PhysicalDeviceSpecs.PhysicalDeviceMemoryProperties)
         };

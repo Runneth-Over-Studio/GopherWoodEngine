@@ -268,6 +268,16 @@ internal unsafe sealed class VulkanPipeline : IDisposable
                 RasterizationSamples = SampleCountFlags.Count1Bit
             };
 
+            PipelineDepthStencilStateCreateInfo depthStencil = new()
+            {
+                SType = StructureType.PipelineDepthStencilStateCreateInfo,
+                DepthTestEnable = true,
+                DepthWriteEnable = true,
+                DepthCompareOp = CompareOp.Less,
+                DepthBoundsTestEnable = false,
+                StencilTestEnable = false
+            };
+
             PipelineColorBlendAttachmentState colorBlendAttachment = new()
             {
                 ColorWriteMask = ColorComponentFlags.RBit | ColorComponentFlags.GBit | ColorComponentFlags.BBit | ColorComponentFlags.ABit,
@@ -298,6 +308,7 @@ internal unsafe sealed class VulkanPipeline : IDisposable
                 PViewportState = &viewportState,
                 PRasterizationState = &rasterizer,
                 PMultisampleState = &multisampling,
+                PDepthStencilState = &depthStencil,
                 PColorBlendState = &colorBlending,
                 Layout = pipelineLayout,
                 RenderPass = renderPass,
