@@ -1,11 +1,11 @@
-﻿using GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDeviceInterface.VulkanBackend;
+﻿using GopherWoodEngine.Runtime.Modules.LowLevelRenderer.VulkanTutorial.GraphicsDeviceInterface.VulkanBackend;
 using Microsoft.Extensions.Logging;
 using Silk.NET.Core.Native;
 using Silk.NET.Vulkan;
 using Silk.NET.Windowing;
 using System;
 
-namespace GopherWoodEngine.Runtime.Modules;
+namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.VulkanTutorial.GraphicsDeviceInterface;
 
 internal unsafe sealed class VulkanGraphicsDeviceInterface : IGraphicsDeviceInterface
 {

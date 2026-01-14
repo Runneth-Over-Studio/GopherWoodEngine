@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace GopherWoodEngine.Runtime.Modules;
+namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.VulkanTutorial.GraphicsDeviceInterface;
 
 /// <summary>
 /// Represents a graphics device that provides windowing abstractions and functionality for interfacing with the GPU.

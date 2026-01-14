@@ -6,7 +6,7 @@ using System.Linq;
 using System.Reflection;
 using Device = Silk.NET.Vulkan.Device;
 
-namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDeviceInterface.VulkanBackend;
+namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.VulkanTutorial.GraphicsDeviceInterface.VulkanBackend;
 
 internal unsafe sealed class VulkanPipeline : IDisposable
 {

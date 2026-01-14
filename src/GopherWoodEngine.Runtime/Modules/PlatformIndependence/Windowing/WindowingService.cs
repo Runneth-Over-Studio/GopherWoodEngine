@@ -1,4 +1,4 @@
-﻿using GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDeviceInterface.VulkanBackend;
+﻿using GopherWoodEngine.Runtime.Modules.LowLevelRenderer.VulkanTutorial.GraphicsDeviceInterface.VulkanBackend;
 using Microsoft.Extensions.DependencyInjection;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;

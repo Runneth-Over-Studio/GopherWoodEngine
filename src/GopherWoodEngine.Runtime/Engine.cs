@@ -1,4 +1,5 @@
 ﻿using GopherWoodEngine.Runtime.Modules;
+using GopherWoodEngine.Runtime.Modules.LowLevelRenderer.VulkanTutorial.GraphicsDeviceInterface;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Silk.NET.Windowing;

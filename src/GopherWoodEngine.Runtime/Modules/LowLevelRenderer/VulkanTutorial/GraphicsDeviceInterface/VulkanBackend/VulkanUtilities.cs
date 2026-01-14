@@ -2,7 +2,7 @@
 using System;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
-namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.GraphicsDeviceInterface.VulkanBackend;
+namespace GopherWoodEngine.Runtime.Modules.LowLevelRenderer.VulkanTutorial.GraphicsDeviceInterface.VulkanBackend;
 
 internal static unsafe class VulkanUtilities
 {
