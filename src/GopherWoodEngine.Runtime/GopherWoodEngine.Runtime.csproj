@@ -4,30 +4,30 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
-	<PublishSingleFile>true</PublishSingleFile>
-	<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-	<GenerateDocumentationFile>true</GenerateDocumentationFile>
-	<Optimize>true</Optimize>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Optimize>true</Optimize>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-	<Product>Gopher Wood Engine</Product>
-	<Authors>Runneth Over Studio, LLC</Authors>
-	<Company>Runneth Over Studio, LLC</Company>
-	<Copyright>© Runneth Over Studio, LLC</Copyright>
-	<PackageId>RunnethOverStudio.GopherWoodEngine</PackageId>
-	<PackageLicenseExpression>MIT</PackageLicenseExpression>
-	<PackageReadmeFile>readme.md</PackageReadmeFile>
-	<PackageIcon>package-icon.png</PackageIcon>
-	<PackageProjectUrl>https://github.com/Runneth-Over-Studio/GopherWoodEngine</PackageProjectUrl>
-	<RepositoryUrl>https://github.com/Runneth-Over-Studio/GopherWoodEngine</RepositoryUrl>
-	<PublishRepositoryUrl>true</PublishRepositoryUrl>
-	<RepositoryType>git</RepositoryType>
-	<Description>Runneth Over Studio's in-house game engine.</Description>
-	<PackageTags>game-engine graphics vulkan jolt-physics c-sharp</PackageTags>
-	<IncludeSymbols>true</IncludeSymbols>
-	<EmbedUntrackedSources>true</EmbedUntrackedSources>
-	<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <Product>Gopher Wood Engine</Product>
+    <Authors>Runneth Over Studio, LLC</Authors>
+    <Company>Runneth Over Studio, LLC</Company>
+    <Copyright>© Runneth Over Studio, LLC</Copyright>
+    <PackageId>RunnethOverStudio.GopherWoodEngine</PackageId>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
+    <PackageIcon>package-icon.png</PackageIcon>
+    <PackageProjectUrl>https://github.com/Runneth-Over-Studio/GopherWoodEngine</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Runneth-Over-Studio/GopherWoodEngine</RepositoryUrl>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Description>Runneth Over Studio's in-house game engine.</Description>
+    <PackageTags>game-engine graphics vulkan jolt-physics c-sharp</PackageTags>
+    <IncludeSymbols>true</IncludeSymbols>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <Version>0.1.0</Version>
-	<PackageReleaseNotes>In-development / pre-alpha.</PackageReleaseNotes>
+    <PackageReleaseNotes>In-development / pre-alpha.</PackageReleaseNotes>
   </PropertyGroup>
 
   <!-- Let our unit tests access and verify the behavior of internal classes, methods, and properties. -->
@@ -44,9 +44,9 @@
 
   <!-- Include readme & image files that are required by the project's resulting NuGet package. -->
   <ItemGroup>
-	<None Include="../../readme.md" Pack="true" PackagePath="readme.md" />
-	<None Include="../../content/logo.png" Pack="true" PackagePath="logo.png" />
-	<None Include="../../content/package-icon.png" Pack="true" PackagePath="package-icon.png" />
+    <None Include="../../readme.md" Pack="true" PackagePath="readme.md" />
+    <None Include="../../content/logo.png" Pack="true" PackagePath="logo.png" />
+    <None Include="../../content/package-icon.png" Pack="true" PackagePath="package-icon.png" />
   </ItemGroup>
 
   <!-- Third-party libraries. -->
@@ -54,7 +54,7 @@
     <PackageReference Include="ashleigh.openal.soft.redist" Version="1.21.1.2" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.1" />
-	<PackageReference Include="Microsoft.SourceLink.GitHub" Version="*" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="*" PrivateAssets="All" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageReference Include="Silk.NET" Version="2.22.0" />
